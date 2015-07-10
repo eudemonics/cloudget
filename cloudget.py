@@ -175,6 +175,9 @@ def getCF(cfurl):
             b = str(b)
             print(b)
          print('')
+
+      if links == 1:
+         getlinks(cfurl)
          follow = raw_input('fetch harvested links? enter Y/N --> ')
          while not re.search(r'^[yYnN]$', follow):
             follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
@@ -189,24 +192,15 @@ def getCF(cfurl):
                if not re.match(r'^(\.\.\/)$', str(b)):
                   b = parent + b
                   print("requesting harvested URL: %s \n" % b)
-                  links == 0
                   getCF(b)
                   getlinks(b)
-         else:
-            sys.exit(0)
-
-      if links == 1:
-         getlinks(cfurl)
 
    except Exception, e:
       print("an error has occurred: %s \n" % str(e))
       raise Exception
       sys.exit(1)
 
-   finally:
-      print("exiting.. \n")
-      sys.exit(0)
-
 getCF(cfurl)
 
-sys.exit()
+print("exiting..")
+sys.exit(0)
