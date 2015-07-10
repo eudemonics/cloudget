@@ -60,7 +60,8 @@ except getopt.GetoptError:
    print('-c, --curl: use cURL')
    print('-o, --out: save output')
    print('l, --links: harvest links')
-   print('-u, --url <url>: cloudflare URL to get [REQUIRED]')
+   print('-u, --url <url>: cloudflare URL to get [**REQUIRED**]')
+   print('**USE COMPLETE URL beginning with http://**')
    sys.exit(2)
 
 for opt, arg in opts:
@@ -69,7 +70,8 @@ for opt, arg in opts:
       print('-c, --curl: use cURL without downloading')
       print('-o, --out: save output')
       print('l, --links: harvest links')
-      print('-u, --url <url>: cloudflare URL to get [REQUIRED]')
+      print('-u, --url <url>: cloudflare URL to get [**REQUIRED**]')
+      print('**USE COMPLETE URL beginning with http://**')
 
    elif opt in ("-o", "--out"):
       writeout = 1
@@ -106,6 +108,7 @@ def getCF(cfurl):
 
    try:
       if usecurl == 1 and writeout == 1:
+         print("PLEASE FIX ME \n")
          r = scraper.get(cfurl, stream=True)
          print("status: ")
          print(r.status_code)
@@ -114,9 +117,9 @@ def getCF(cfurl):
          print("\ngetting cookies for %s.. \n" % cfurl)
          cookie_arg = cfscrape.get_cookie_string(cfurl)
          print("trying to download using cURL to %s.. \n" % outfile)
-         command_text = 'curl -# --no-keepalive -L -O --cookie ' + cookie_arg + ' ' + cfurl
+         command_text = 'curl -# --no-keepalive --ignore-content-length -L -O --cookie \'' + cookie_arg + '\' ' + cfurl
          print(command_text)
-         output = Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+         output = subprocess.Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
          response, errors = output.communicate()
          print("\nresponse: " + str(response))
          print("\nerrors: " + str(errors))
@@ -131,7 +134,7 @@ def getCF(cfurl):
          cookie_arg = cfscrape.get_cookie_string(cfurl)
          print(cookie_arg)
          print("\nchecking cURL output...\n")
-         result2 = check_output(["curl", "-#", "--cookie", cookie_arg, "-L", "-k", "--no-keepalive", cfurl])
+         result1 = check_output(["curl", "-#", "--cookie", cookie_arg, cfurl])
          time.sleep(5)
          result = check_output(["curl", "-#", "--cookie", cookie_arg, "-L", "-k", "--no-keepalive", cfurl])
          print(result)
