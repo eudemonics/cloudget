@@ -19,17 +19,18 @@ or install using pip:
 
 #### OPTIONS:
 
-**-u | --url <[url]>**
+**-u | --url <[url]>:**
 REQUIRED - url behind cloudflare proxy to access
 
-**-o | --out**
+**-o | --out:**
 OPTIONAL - download to file
 
-**-c | --curl**
+**-c | --curl:**
 OPTIONAL - pass cloudflare link through cURL
 
-**-h | --help**
+**-h | --help:**
 HELP - show options and exit
+
 
 **KNOWN BUGS:**
 
