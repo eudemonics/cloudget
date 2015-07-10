@@ -1,4 +1,4 @@
-# cloudget 0.1
+# cloudget 0.2
 #### by vvn [ lost @ nobody . ninja ]
 
  python script to bypass cloudflare from command line. built upon cfscrape module.
@@ -16,6 +16,8 @@ or install using pip:
 **USAGE:**
 
     python cloudget.py [-c] [-o] -u <[url behind cloudflare proxy]>
+
+**MUST USE COMPLETE URL STARTING WITH http://**
 
 #### OPTIONS:
 
