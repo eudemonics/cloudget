@@ -7,6 +7,7 @@ except:
    pass
    try:
       os.system('pip install cfscrape')
+      import cfscrape
    except:
       print('unable to install the cfscrape module via pip. this script requires cfscrape to run. get it here: https://github.com/Anorov/cloudflare-scrape')
       sys.exit(1)
