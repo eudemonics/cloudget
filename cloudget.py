@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# cloudget v0.1
+# author: vvn < lost @ nobody . ninja >
 
 import sys, getopt, subprocess, os
 try:
@@ -69,7 +71,7 @@ try:
       print("\nfetching cookies for %s.. \n" % cfurl)
       cookie_arg = cfscrape.get_cookie_string(cfurl)
       print("trying to download using cURL to %s.. \n" % outfile)
-      command_text = 'curl -# --cookie ' + cookie_arg + ' -O ' + cfurl
+      command_text = 'curl -# --no-keepalive -L --cookie ' + cookie_arg + ' -O ' + cfurl
       output = Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
       response, errors = output.communicate()
       print("response: " + str(response))
@@ -84,7 +86,7 @@ try:
       cookie_arg = cfscrape.get_cookie_string(cfurl)
       print(cookie_arg)
       print("checking cURL output...\n")
-      result = subprocess.check_output(["curl", "--cookie", cookie_arg, cfurl])
+      result = subprocess.check_output(["curl", "--cookie", cookie_arg, "-L", "--no-keepalive", cfurl])
       print(result)
    
    elif usecurl == 0 and writeout == 1:
