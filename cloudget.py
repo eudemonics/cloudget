@@ -186,6 +186,8 @@ def getCF(cfurl):
             p = urlparse(cfurl)
             part = p.path.split('/')[-1]
             path = p.path.strip(part)
+            if '/' not in path[:1]:
+               path = '/' + path
             parent = p.scheme + '://' + p.netloc + path
             for link in html.findAll('a'):
                b = link.get('href')
