@@ -3,15 +3,20 @@
 
  python script to bypass cloudflare from command line. built upon cfscrape module.
 
-**REQUIRES CFSCRAPE MODULE TO RUN**
+**REQUIRES CFSCRAPE AND BEAUTIFULSOUP MODULES TO RUN**
 
-get it here:
+get cfscrape here:
 
     https://github.com/Anorov/cloudflare-scrape
+
+get BeautifulSoup here:
+
+    http://www.crummy.com/software/BeautifulSoup/
 
 or install using pip:
 
     pip install cfscrape
+    pip install BeautifulSoup
 
 **USAGE:**
 
