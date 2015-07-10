@@ -41,4 +41,4 @@ HELP - show options and exit
 
 **KNOWN BUGS:**
 
-    cURL download (-c -o) is still not fully functional yet. working on it.
+    cURL option (-c) most likely doesn't work with cloudflare URLs. for cloudflare URL support please don't use -c.
