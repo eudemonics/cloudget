@@ -16,7 +16,7 @@ except:
    except:
       print('unable to install the cfscrape module via pip. this script requires cfscrape to run. get it here: https://github.com/Anorov/cloudflare-scrape')
       sys.exit(1)
-      
+
 
 print('''
 =====================================
@@ -92,7 +92,6 @@ def getCF(cfurl):
       checkcurl = 'no'
    print("using curl: %s \n" % checkcurl)
 
-
    if writeout == 1:
       global outfile
       outfile = cfurl.split('/')[-1]
@@ -108,7 +107,6 @@ def getCF(cfurl):
 
    try:
       if usecurl == 1 and writeout == 1:
-         print("PLEASE FIX ME \n")
          r = scraper.get(cfurl, stream=True)
          print("status: ")
          print(r.status_code)
@@ -146,10 +144,12 @@ def getCF(cfurl):
          print(r.status_code)
          print("\nheaders: ")
          print(r.headers)
-         print("\nsaving content to %s \n" % outfile)
+         if re.search(r'^(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl):
+            print(bs)
+         print("\nsaving content to %s. this may take awhile depending on file size... \n" % outfile)
 
          with open(outfile, 'wb+') as dlfile:
-            for chunk in r.iter_content(chunk_size=4096):
+            for chunk in r.iter_content(chunk_size=2048):
                if chunk:
                   dlfile.write(chunk)
                   dlfile.flush()
@@ -163,7 +163,8 @@ def getCF(cfurl):
          r = scraper.get(cfurl, stream=True)
          html = BeautifulSoup(r.text)
          bs = html.prettify()
-         print(bs)
+         if re.search(r'^(.*)(\.html?|\.php|\.[aj]spx?|\.cfm)|(\/)$',cfurl):
+            print(bs)
 
       def getlinks(cfurl):
          r = scraper.get(cfurl, stream=True)
@@ -181,21 +182,42 @@ def getCF(cfurl):
          follow = raw_input('fetch harvested links? enter Y/N --> ')
          while not re.search(r'^[yYnN]$', follow):
             follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
-         
+
          if follow.lower() == 'y':
+            if 'dirs' not in locals():
+               dirs = raw_input('follow directories? enter Y/N --> ')
+               while not re.search(r'^[yYnN]$', dirs):
+                  dirs = raw_input('invalid entry. enter Y to follow directories or N to only retrieve files --> ')
+            r = scraper.get(cfurl, stream=True)
+            html = BeautifulSoup(r.text)
+            findlinks = html.findAll('a')
             p = urlparse(cfurl)
             part = p.path.split('/')[-1]
             path = p.path.strip(part)
             if '/' not in path[:1]:
                path = '/' + path
             parent = p.scheme + '://' + p.netloc + path
-            for link in html.findAll('a'):
-               b = link.get('href')
-               if not re.match(r'^(\.\.\/)$', str(b)):
-                  b = parent + b
-                  print("requesting harvested URL: %s \n" % b)
-                  getCF(b)
-                  getlinks(b)
+            total = len(findlinks)
+            if dirs.lower() == 'y':
+               for link in findlinks:
+                  b = link.get('href')
+                  if not re.match(r'^(\.\.\/)$', str(b)):
+                     b = parent + b
+                     print("requesting harvested URL: %s \n" % b)
+                     getCF(b)
+                     getlinks(b)
+                  else:
+                     continue
+            else:
+               for link in findlinks:
+                  b = link.get('href')
+                  if not re.search(r'^(.*)(\/)$', str(b)):
+                     b = parent + b
+                     print("requesting harvested URL: %s \n" % b)
+                     getCF(b)
+                     getlinks(b)
+                  else:
+                     continue
 
    except Exception, e:
       print("an error has occurred: %s \n" % str(e))
