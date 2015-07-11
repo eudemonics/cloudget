@@ -33,7 +33,7 @@ REQUIRED - url behind cloudflare proxy to access
 OPTIONAL - download to file
 
 **-c | --curl:**
-OPTIONAL - pass cloudflare link through cURL
+OPTIONAL - pass URL through cURL
 
 **-h | --help:**
 HELP - show options and exit
