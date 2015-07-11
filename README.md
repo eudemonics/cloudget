@@ -41,4 +41,5 @@ HELP - show options and exit
 
 **KNOWN BUGS:**
 
-    cURL option (-c) most likely doesn't work with cloudflare URLs. for cloudflare URL support please don't use -c.
+    cURL option (-c) most likely doesn't work with cloudflare URLs.
+    for cloudflare URL support please don't use -c.
