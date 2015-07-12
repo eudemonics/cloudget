@@ -109,47 +109,56 @@ def getCF(cfurl):
 
    print("creating new session..\n")
    scraper = cfscrape.create_scraper() # returns a requests.Session object
-
+   ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
    try:
-      if usecurl == 1 and writeout == 1:
+      if usecurl == 1:
          r = scraper.get(cfurl, stream=True)
          print("status: ")
          print(r.status_code)
-         print("\nheaders: ")
-         print(r.headers)
          print("\ngetting cookies for %s.. \n" % cfurl)
          cookie_arg = cfscrape.get_cookie_string(cfurl)
          print(cookie_arg)
-         print("\ntrying to download using cURL to %s.. \n" % outfile)
-         command_text = 'curl -# --no-keepalive --ignore-content-length -L -k -O --cookie \'' + cookie_arg + '\' ' + cfurl
+         header = 'curl --cookie \'' + cookie_arg + '\' -I -L ' + cfurl
+         houtput = subprocess.Popen(header, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+         hresponse, herrors = houtput.communicate()
+         print("\nheaders: \n%s \n" % str(hresponse))
+         curlstring = 'curl -# --cookie \'' + cookie_arg + '\' -A \'' + ua + '\' --no-keepalive --ignore-content-length -k '
          if 'curlopts' in locals():
-            command_text = 'curl -# --cookie \'' + cookie_arg + '\' ' + curlopts + ' --no-keepalive -O ' + cfurl
+            curlstring = 'curl -# --cookie \'' + cookie_arg + '\' ' + curlopts + ' --ignore-content-length '
+         if writeout == 1:
+            curlstring = curlstring + '-O '
+            msg = "\ntrying to download using cURL to %s.. \n" % outfile
+         else:
+            msg = "\nfetching %s using cURL.. \n" % cfurl
+         print(msg)
+         command_text = curlstring + cfurl
          print(command_text)
          output = subprocess.Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-         response, errors = output.communicate()
-         print("\nresponse: " + str(response))
-         print("\nerrors: " + str(errors))
-
-      elif usecurl == 1 and writeout == 0:
-         r = scraper.get(cfurl, stream=True)
-         print("status: ")
-         print(r.status_code)
-         print("\nheaders: ")
-         print(r.headers)
-         print("\ngetting cookies for url: %s \n" % cfurl)
-         cookie_arg = cfscrape.get_cookie_string(cfurl)
-         print(cookie_arg)
-         print("\nchecking cURL output...\n")
-         if 'curlopts' in locals():
-            command_text = 'curl -# --cookie \'' + cookie_arg + '\' ' + curlopts + ' --no-keepalive -O ' + cfurl
-            output = subprocess.Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+         result, errors = output.communicate()
+         ht = BeautifulSoup(str(result))
+         cloudpass = ht.find('input', {'name': 'pass'}).get('value')
+         cloudsch = ht.find('input', {'name': 'jschl_vc'}).get('value')
+         print(cloudpass)
+         if cloudpass:
+            reurl = ht.find('form').get('action')
+            print(reurl)
+            p = urlparse(cfurl)
+            part = p.path.split('/')[-1]
+            path = p.path.strip(part)
+            if '/' in path[:1]:
+               path = path[1:]
+            parent = p.scheme + '://' + p.netloc + path
+            go = parent + reurl
+            cs = curlstring + '--retry 1 --retry-delay 5 -G -i -F pass=' + cloudpass + '&jschl_vc=' + cloudsch + ' -e ' + p.netloc + ' -L --post301 --post302 --post303 '
+            if writeout == '0':
+               cs = cs + '-v '
+            command = cs + go
+	    print(command)
+            output = subprocess.Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
             response, errors = output.communicate()
-            print("\nresponse: %s \n" % str(response))
+            print("\nresponse: \n %s \n" % str(response))
          else:
-            result1 = check_output(["curl", "-#", "--cookie", cookie_arg, cfurl])
-            time.sleep(5)
-            result = check_output(["curl", "-#", "--cookie", cookie_arg, "-L", "-k", "--no-keepalive", cfurl])
-            print(result)
+            print(ht.prettify())
 
       elif usecurl == 0 and writeout == 1:
          print("getting %s... \n" % cfurl)
@@ -158,13 +167,14 @@ def getCF(cfurl):
          print(r.status_code)
          print("\nheaders: ")
          print(r.headers)
+         html = BeautifulSoup(r.text)
          if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl):
+            bs = html.prettify()
             print(bs)
          print("\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile)
          start = time.clock()
          filesize = r.headers.get('Content-Length')
          dld = 0
-         progress = lambda a: a - start
          with open(savefile, 'wb+') as dlfile:
             if filesize is None:
                dlfile.write(r.content)
