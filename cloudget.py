@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # cloudget v0.3
-# release date: July 11, 2015
+# release date: July 12, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, subprocess, os, re, random, string, time
@@ -109,7 +109,11 @@ def getCF(cfurl):
 
    print("creating new session..\n")
    scraper = cfscrape.create_scraper() # returns a requests.Session object
-   ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
+   uafile = open('useragents.txt', 'r+')
+   ualist = uafile.readlines()
+   n = random.randint(0,len(ualist))
+   ua = ualist[n].strip()
+   #ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
    try:
       if usecurl == 1:
          r = scraper.get(cfurl, stream=True)
@@ -124,7 +128,7 @@ def getCF(cfurl):
          print("\nheaders: \n%s \n" % str(hresponse))
          curlstring = 'curl -# --cookie \'' + cookie_arg + '\' -A \'' + ua + '\' --no-keepalive --ignore-content-length -k '
          if 'curlopts' in locals():
-            curlstring = 'curl -# --cookie \'' + cookie_arg + '\' ' + curlopts + ' --ignore-content-length '
+            curlstring = 'curl -# --cookie \'' + cookie_arg + '\' ' + curlopts + ' -A \'' + ua + ' -k --ignore-content-length '
          if writeout == 1:
             curlstring = curlstring + '-O '
             msg = "\ntrying to download using cURL to %s.. \n" % outfile
@@ -135,42 +139,43 @@ def getCF(cfurl):
          print(command_text)
          output = subprocess.Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
          result, errors = output.communicate()
-         ht = BeautifulSoup(str(result))
-         cloudpass = ht.find('input', {'name': 'pass'}).get('value')
-         cloudsch = ht.find('input', {'name': 'jschl_vc'}).get('value')
-         print(cloudpass)
-         if cloudpass:
-            reurl = ht.find('form').get('action')
-            print(reurl)
-            p = urlparse(cfurl)
-            part = p.path.split('/')[-1]
-            path = p.path.strip(part)
-            if '/' in path[:1]:
-               path = path[1:]
-            parent = p.scheme + '://' + p.netloc + path
-            go = parent + reurl
-            cs = curlstring + '--retry 1 --retry-delay 5 -G -i -F pass=' + cloudpass + '&jschl_vc=' + cloudsch + ' -e ' + p.netloc + ' -L --post301 --post302 --post303 '
-            if writeout == '0':
-               cs = cs + '-v '
-            command = cs + go
-	    print(command)
-            output = subprocess.Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-            response, errors = output.communicate()
-            print("\nresponse: \n %s \n" % str(response))
+         if result is not None:
+            ht = BeautifulSoup(str(result))
+            cloudpass = ht.find('input', {'name': 'pass'}).get('value')
+            cloudsch = ht.find('input', {'name': 'jschl_vc'}).get('value')
+            print("pass: %s \n" % cloudpass)
+            if cloudpass:
+               reurl = ht.find('form').get('action')
+               print("form action: %s \n" % reurl)
+               p = urlparse(cfurl)
+               part = p.path.split('/')[-1]
+               path = p.path.strip(part)
+               if '/' in path[:1]:
+                  path = path[1:]
+               parent = p.scheme + '://' + p.netloc + path
+               go = parent + reurl
+               cs = curlstring + '--retry 1 --retry-delay 5 -G --data \'pass=' + cloudpass + '&jschl_vc=' + cloudsch + '&challenge-form=submit&jschl-answer\' -e ' + p.netloc + ' -L '
+               if writeout == '0':
+                  cs = cs + '-v '
+               command = cs + go + '?pass=' + cloudpass
+            else:
+               print(ht.prettify())
          else:
-            print(ht.prettify())
+            command = curlstring + ' -L -i ' + cfurl
+         print(command)
+         output = subprocess.Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+         response, errors = output.communicate()
+         print("\nresponse: \n %s \n" % str(response))
 
       elif usecurl == 0 and writeout == 1:
          print("getting %s... \n" % cfurl)
          r = scraper.get(cfurl, stream=True)
-         print("status: ")
+         print("\nSTATUS: ")
          print(r.status_code)
-         print("\nheaders: ")
-         print(r.headers)
-         html = BeautifulSoup(r.text)
-         if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl):
-            bs = html.prettify()
-            print(bs)
+         print("\nHEADERS: \n")
+         for key in r.headers.keys():
+            print(str(key) + ": " + str(r.headers[key]))
+         print('')
          print("\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile)
          start = time.clock()
          filesize = r.headers.get('Content-Length')
@@ -181,7 +186,7 @@ def getCF(cfurl):
             else:
                print('\nfilesize: %s bytes \n' % str(filesize))
                filesize = int(filesize)
-               for chunk in r.iter_content(chunk_size=2048):
+               for chunk in r.iter_content(chunk_size=1024):
                   if chunk:
                      dld += len(chunk)
                      dlfile.write(chunk)
@@ -189,10 +194,16 @@ def getCF(cfurl):
                      sys.stdout.write("\rdownloaded: %d bytes   [%s%s] %s kb/s" % (dld, '#' * done, ' ' * (50 - done), 0.000125 * (dld / (time.clock() - start))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
+                  else:
+                     break
+               print("\nfile saved! \n")
             dlfile.close()
          elapsed = time.clock() - start
          print("\ntime elapsed: %s \n" % str(elapsed))
-         print("\nfile saved! \n")
+         html = BeautifulSoup(r.text)
+         if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl):
+            bs = html.prettify()
+            print(bs)
 
       else:
          print("getting %s... \n" % cfurl)
