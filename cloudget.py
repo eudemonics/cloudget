@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget v0.3
-# release date: July 12, 2015
+# cloudget v0.4
+# release date: July 14, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, subprocess, os, re, random, string, time
@@ -20,7 +20,7 @@ except:
 
 intro = '''
 =====================================
------------ CLOUDGET v0.3 -----------
+----------- CLOUDGET v0.4 -----------
 -------------------------------------
 ----------- author : vvn ------------
 --------- lost@nobody.ninja ---------
@@ -59,7 +59,7 @@ parser.add_argument('-u', '--url', action='store', help='[**REQUIRED**] full clo
 parser.add_argument('-o', '--out', help='save output to \'download\' directory', action='store_true', required=False)
 parser.add_argument('-l', '--links', help='harvest links found in response', action='store_true', required=False)
 parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', dest='curl', metavar='CURL_OPTS', help='use cURL. use %(metavar)s to pass optional cURL parameters. (for more info try \'curl --manual\')', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s 0.3 by vvn <lost@nobody.ninja>')
+parser.add_argument('--version', action='version', version='%(prog)s 0.4 by vvn <lost@nobody.ninja>')
 
 args = parser.parse_args()
 if args.out:
@@ -109,11 +109,19 @@ def getCF(cfurl):
 
    print("creating new session..\n")
    scraper = cfscrape.create_scraper() # returns a requests.Session object
-   uafile = open('useragents.txt', 'r+')
-   ualist = uafile.readlines()
+   if os.path.exists('useragents.txt'):
+      uafile = open('useragents.txt', 'r+')
+      ualist = uafile.readlines()
+   else:
+      ualist = ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36', 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko', 'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko', 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)', 'Mozilla/5.0 (Windows NT 6.3; rv:36.0) Gecko/20100101 Firefox/36.0', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10; rv:33.0) Gecko/20100101 Firefox/33.0', 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A']   
    n = random.randint(0,len(ualist))
    ua = ualist[n].strip()
-   #ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36'
+   
+   def resumedl(cfurl, resumesize):
+      resumeheader = {'Range': 'bytes=%d-' % int(resumesize)}
+      r = scraper.get(cfurl, headers=resumeheader, stream=True, verify=False, allow_redirects=True)
+      return r
+      
    try:
       if usecurl == 1:
          r = scraper.get(cfurl, stream=True)
@@ -143,7 +151,7 @@ def getCF(cfurl):
             ht = BeautifulSoup(str(result))
             cloudpass = ht.find('input', {'name': 'pass'}).get('value')
             cloudsch = ht.find('input', {'name': 'jschl_vc'}).get('value')
-            print("pass: %s \n" % cloudpass)
+            print("\npass: %s \n" % cloudpass)
             if cloudpass:
                reurl = ht.find('form').get('action')
                print("form action: %s \n" % reurl)
@@ -168,25 +176,45 @@ def getCF(cfurl):
          print("\nresponse: \n %s \n" % str(response))
 
       elif usecurl == 0 and writeout == 1:
-         print("getting %s... \n" % cfurl)
-         r = scraper.get(cfurl, stream=True)
+         print("\ngetting %s... \n" % cfurl)
+         if not os.path.exists(savefile):
+            r = scraper.get(cfurl, stream=True)
+            dlmsg = "\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile
+            dld = 0
+            df = open(savefile, 'wb+')
+         else:
+            resumesize = os.path.getsize(savefile)
+            print("\n%s already exists! \n" % outfile)
+            print("\nlocal file size: %s bytes \n" % str(resumesize))
+            checkresume = raw_input('attempt to resume download? Y/N --> ')
+            while not re.match(r'^[yYnN]$', checkresume):
+               checkresume = raw_input('invalid input. enter Y to resume download or N to start over --> ')
+            if checkresume.lower() == 'y':
+               r = resumedl(cfurl, resumesize)
+               dlmsg = "\nattempting to resume download for %s. this may take awhile depending on file size... \n" % outfile
+               dld = int(resumesize)
+               df = open(savefile, 'a+b')
+            else:
+               r = scraper.get(cfurl, stream=True)
+               dlmsg = "\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile
+               dld = 0
+               df = open(savefile, 'wb+')
+         filesize = r.headers.get('Content-Length')
          print("\nSTATUS: ")
          print(r.status_code)
          print("\nHEADERS: \n")
          for key in r.headers.keys():
             print(str(key) + ": " + str(r.headers[key]))
          print('')
-         print("\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile)
+         print(dlmsg)
          start = time.clock()
-         filesize = r.headers.get('Content-Length')
-         dld = 0
-         with open(savefile, 'wb+') as dlfile:
+         with df as dlfile:
             if filesize is None:
                dlfile.write(r.content)
             else:
-               print('\nfilesize: %s bytes \n' % str(filesize))
                filesize = int(filesize)
-               for chunk in r.iter_content(chunk_size=1024):
+               print('\nremote file size: %d bytes \n' % filesize)
+               for chunk in r.iter_content(chunk_size=2048):
                   if chunk:
                      dld += len(chunk)
                      dlfile.write(chunk)
@@ -196,33 +224,32 @@ def getCF(cfurl):
                      os.fsync(dlfile.fileno())
                   else:
                      break
-               print("\nfile saved! \n")
-            dlfile.close()
+         print("\nfile %s saved! \n" % outfile)
          elapsed = time.clock() - start
-         print("\ntime elapsed: %s \n" % str(elapsed))
+         print("\ndownload time: %s seconds \n" % str(elapsed))
          html = BeautifulSoup(r.text)
-         if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl):
+         if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl) or re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm)$', outfile):
             bs = html.prettify()
             print(bs)
 
       else:
          print("getting %s... \n" % cfurl)
          #print(scraper.get(cfurl).content)
-         r = scraper.get(cfurl, stream=True)
+         r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
          print("status: ")
          print(r.status_code)
          print("\nheaders: ")
          print(r.headers)
          print('')
          time.sleep(5)
-         s = scraper.get(cfurl, stream=True)
+         s = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
          html = BeautifulSoup(s.text)
          bs = html.prettify()
          if re.search(r'^(.*)(\.html?|\.php|\.[aj]spx?|\.cfm)|(\/)$',cfurl):
             print(bs)
 
       def getlinks(cfurl):
-         r = scraper.get(cfurl, stream=True)
+         r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
          html = BeautifulSoup(r.text)
          bs = html.prettify()
          print('\nFOUND LINKS:\n')
@@ -243,7 +270,7 @@ def getCF(cfurl):
                dirs = raw_input('follow directories? enter Y/N --> ')
                while not re.search(r'^[yYnN]$', dirs):
                   dirs = raw_input('invalid entry. enter Y to follow directories or N to only retrieve files --> ')
-            r = scraper.get(cfurl, stream=True)
+            r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
             html = BeautifulSoup(r.text)
             findlinks = html.findAll('a')
             p = urlparse(cfurl)
@@ -280,5 +307,5 @@ def getCF(cfurl):
 
 getCF(cfurl)
 
-print("exiting..")
+print("\nexiting..\n")
 sys.exit(0)
