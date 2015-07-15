@@ -372,7 +372,7 @@ def getCF(cfurl):
                      print("\r\nrequest cancelled by user\n")
                      raise
                   except:
-                     print("\r\request interrupted\n")
+                     print("\r\nrequest interrupted\n")
                      break
                   finally:
                      getlinks(b)
