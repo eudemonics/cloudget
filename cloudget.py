@@ -113,12 +113,8 @@ def getCF(cfurl):
       savefile = os.path.join('download', outfile)
 
    print("creating new session..\n")
-   scraper = cfscrape.create_scraper() # returns a requests.Session object
-   if os.path.exists('useragents.txt'):
-      uafile = open('useragents.txt', 'r+')
-      ualist = uafile.readlines()
-   else:
-      ualist = [
+   scraper = cfscrape.create_scraper()
+   ualist = [
 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36', 
 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko', 
 'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko', 
@@ -255,7 +251,7 @@ def getCF(cfurl):
    elif usecurl == 0 and writeout == 1:
       print("\ngetting %s... \n" % cfurl)
       if not os.path.exists(savefile):
-         r = scraper.get(cfurl, stream=True)
+         r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
          dlmsg = "\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile
          dld = 0
          df = open(savefile, 'wb+')
@@ -272,7 +268,7 @@ def getCF(cfurl):
             dld = int(resumesize)
             df = open(savefile, 'a+b')
          else:
-            r = scraper.get(cfurl, stream=True)
+            r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True)
             dlmsg = "\nsaving content to \'download\' directory as %s. this may take awhile depending on file size... \n" % outfile
             dld = 0
             df = open(savefile, 'wb+')
@@ -302,11 +298,22 @@ def getCF(cfurl):
                else:
                   break
       print("\nfile %s saved! \n" % outfile)
-      elapsed = time.clock() - start
-      print("\ndownload time: %s seconds \n" % str(elapsed))
+      fin = time.clock() - start
+      totalsecs = fin * 3600
+      if totalsecs > 60:
+         mins = totalsecs / 60
+         secs = totalsecs % 60
+      else:
+         mins = 0
+         secs = totalsecs
+      mins = str(mins)
+      secs = str(secs)
+      elapsed = '%s minutes, %s seconds' % (mins, secs)
+      print("\ndownload time: %s \n" % str(elapsed))
       html = BeautifulSoup(r.text)
       if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl) or re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm)$', outfile):
          bs = html.prettify()
+         time.sleep(5)
          print(bs)
 
    else:
