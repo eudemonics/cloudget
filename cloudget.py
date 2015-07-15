@@ -411,14 +411,10 @@ except Exception, e:
                          'lineno'  : sys.exc_info()[2].tb_lineno,
                          'name'    : sys.exc_info()[2].tb_frame.f_code.co_name,
                          'type'    : sys.exc_info()[0].__name__,
-                         'message' : sys.exc_info()[1].message, # or see traceback._some_str()
+                         'message' : sys.exc_info()[1].message,
                         }
-   print
-   print(traceback.format_exc())
-   #print(traceback.extract_tb(sys.exc_info()[2]))
+   print('')
    print(traceback_template % traceback_details)
-   #print(traceback.extract_stack())
-   raise Exception
    sys.exit(1)
 
 print("\nexiting..\n")
