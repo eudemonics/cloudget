@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget v0.666
-# release date: July 22, 2015
+# cloudget v0.69
+# release date: July 27, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, subprocess, os, re, random, requests, string, time, traceback
@@ -21,7 +21,7 @@ except:
 
 intro = '''
 =========================================
------------- CLOUDGET v0.666 ------------
+------------ CLOUDGET v0.69 -------------
 =========================================
 ------------- author : vvn --------------
 ----- lost [at] nobody [dot] ninja ------
@@ -69,7 +69,7 @@ parser.add_argument('-l', '--links', help='scrape content returned from server f
 parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', dest='curl', metavar='CURL_OPTS', help='use cURL. use %(metavar)s to pass optional cURL parameters. (for more info try \'curl --manual\')', required=False)
 parser.add_argument('-p', '--proxy', action='store', metavar='PROXY_SERVER:PORT', help='use a proxy to connect to remote server at [protocol]://[host]:[port] (example: -p http://localhost:8080) **only use HTTP or HTTPS protocols!', required=False)
 parser.add_argument('-d', '--debug', help='show detailed stack trace on exceptions', action='store_true', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s 0.666 by vvn <lost@nobody.ninja>, released july 22, 2015.')
+parser.add_argument('--version', action='version', version='%(prog)s v0.69 by vvn <lost@nobody.ninja>, released july 27, 2015.')
 
 args = parser.parse_args()
 if args.out:
@@ -133,6 +133,17 @@ def getCF(cfurl, links):
       checkcurl = 'no'
    print("using curl: %s \n" % checkcurl)
    print("harvesting links: %s \n" % checklinks)
+   
+   p = urlparse(cfurl)
+   part = p.path.split('/')[-1]
+   path = p.path.strip(part)
+   if '/' not in path[:1]:
+      path = '/' + path
+   toplevel = p.scheme + '://' + p.netloc
+   parent = toplevel + path
+   childdir = path.strip('/')
+   domaindir = os.path.join('download', p.netloc)
+   parentdir = os.path.join(domaindir, childdir)
 
    if writeout == 1:
       global outfile
@@ -143,10 +154,13 @@ def getCF(cfurl, links):
       outfile = cfurl.split('?')[0]
       outfile = outfile.split('/')[-1]
       filename = cfurl.lstrip('https:').strip('/')
+      filename = filename.rstrip(outfile)
       dirs = filename.split('/')
+      a = 'download'
       for dir in dirs:
-         if not os.path.exists(dir):
-            os.makedirs(dir)
+         a = os.path.join(a, dir)
+         if not os.path.exists(a):
+            os.makedirs(a)
       if len(outfile) < 1 or outfile in p.netloc:
          outfile = 'index.html'
          outdir = filename
@@ -244,9 +258,6 @@ def getCF(cfurl, links):
          msg = "\nfetching %s using cURL.. \n" % cfurl
       command_text = 'curl ' + curlstring + cfurl
       print(msg)
-      p = urlparse(cfurl)
-      part = p.path.split('/')[-1]
-      path = p.path.strip(part)
       print("\nsubmitting cURL command string: \n%s \n" % command_text)
       output = Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
       result, errors = output.communicate()
@@ -374,12 +385,12 @@ def getCF(cfurl, links):
                      unit = 'bytes'
                      prog = str(round(dld,2))
                      if dldkb > 1:
-                        unit = 'kb'
+                        unit = 'kb   '
                         prog = str(round(dldkb,2))
                         if dldmb > 1:
-                           unit = 'mb'
+                           unit = 'mb   '
                            prog = str(round(dldmb,2))
-                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kb/s" % (prog, unit, '#' * done, ' ' * (50 - done), 0.000125 * (dldkb / (time.clock() - start))))
+                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kb/s" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / (time.clock() - start))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
                   else:
@@ -399,7 +410,7 @@ def getCF(cfurl, links):
                      break
          print("\r\nfile %s saved! \n" % outfile)
          fin = time.clock() - start
-         totalsecs = fin * 1000
+         totalsecs = fin * 360
          elapsed = "%s seconds " % str(totalsecs)
          if totalsecs > 60:
             totalmins = float(totalsecs / 60)
@@ -464,11 +475,64 @@ def getCF(cfurl, links):
          print('\nNO LINKS FOUND.\n')
          foundlinks = 0
       return foundlinks
+      
+   def selectdir(usedirremote):
+      r = scraper.get(usedirremote, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+      html = BeautifulSoup(r.text)
+      findlinks = html.findAll('a')
+      dirlist = []
+      for link in findlinks:
+         b = link.get('href')
+         if not re.match(r'^((\.\.)?\/)$', str(b)):
+            if re.search(r'^(.*)(\/)$', str(b)):
+               dirlist.append(b)
+      
+      p = urlparse(usedirremote)
+      part = p.path.split('/')[-1]
+      path = p.path.strip(part)
+      if '/' not in path[:1]:
+         path = '/' + path
+      toplevel = p.scheme + '://' + p.netloc
+      parent = toplevel + path
+      
+      i = 0
+      dirtotal = len(dirlist)
+      if dirtotal > 0:
+         print('\nFOUND %d DIRECTORIES: \n' % dirtotal)
+         while i < dirtotal:
+            sel = i + 1
+            print(str(sel) + ' - ' + str(dirlist[i]))
+            i += 1
+         print('')
+         lim = dirtotal + 1
+         matchtop = r'^(%s)(\/)?$' % toplevel
+         if not re.match(matchtop,usedirremote):
+            print('0 - RETURN UP ONE LEVEL TO PARENT DIRECTORY \n')
+            startsel = '0-%d' % dirtotal
+         else:
+            startsel = '1-%d' % dirtotal
+         selectdir = raw_input('make a selection [%s] --> ' % startsel)
+         if not int(selectdir) in range(0, lim):
+            selectdir = raw_input('invalid entry. please enter a selection %s --> ' % startsel)
+         if selectdir == '0':
+            usedirremote = parent
+            subcont = 0
+         else:
+            n = int(selectdir) - 1
+            usedir = dirlist[n]
+            usedirremote = parent + usedir
+            subcont = 1
+      else:
+         print('\nNO DIRECTORIES FOUND. searching in current directory..\n')
+         subcont = 0
+         usedirremote = parent + part
+      return usedirremote, subcont, parent
 
    if links == 1:
       if 'found' not in locals():
          found = getlinks(cfurl)
-      while found > 0:
+         keep = 1
+      while found > 0 and keep is not 0:
          follow = raw_input('fetch harvested links? enter Y/N --> ')
          while not re.search(r'^[yYnN]$', follow):
             follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
@@ -496,31 +560,16 @@ def getCF(cfurl, links):
                      depth = 0
                else:
                   if followdirs.lower() == 'y':
-                     followdirs = raw_input('recurse into subdirectories? enter Y/N --> ')
-                     while not re.search(r'^[yYnN]$', followdirs):
-                        followdirs = raw_input('invalid entry. enter Y to follow directories or N to only retrieve files --> ')
-                     if followdirs.lower() == 'y':
-                        depth += 1
-                     else:
-                        depth -= 1
+                     depth += 1
                   else:
-                     depth = 0
-                     found = -1
+                     depth -= 1
             else:
                followdirs = 'n'
-                  
-            p = urlparse(cfurl)
-            part = p.path.split('/')[-1]
-            path = p.path.strip(part)
-            if '/' not in path[:1]:
-               path = '/' + path
-            parent = p.scheme + '://' + p.netloc + path
+               
             if findlinks:
                total = len(findlinks)
             else:
                total = 0
-            childdir = path.strip('/')
-            parentdir = os.path.join(domaindir, childdir)
             if writeout == 1:
                if not os.path.exists(parentdir):
                   os.makedirs(parentdir)
@@ -539,6 +588,7 @@ def getCF(cfurl, links):
                            continue
                         except (KeyboardInterrupt, SystemExit):
                            print("\r\nrequest cancelled by user\n")
+                           keep = 0
                            break
                         except Exception, e:
                            print("\r\nan exception has occurred: %s \n" % str(e))
@@ -549,28 +599,21 @@ def getCF(cfurl, links):
                         found = 0
                         continue
                elif followdirs.lower() == 'y' and depth > 0:
-                  dirlist = []
-                  for link in findlinks:
-                     b = link.get('href')
-                     if not re.match(r'^((\.\.)?\/)$', str(b)):
-                        if re.search(r'^(.*)(\/)$', str(b)):
-                           dirlist.append(b)
-                  i = 0
-                  dirtotal = len(dirlist)
-                  print('\nFOUND %d DIRECTORIES: \n' % dirtotal)
-                  while i < dirtotal:
-                     sel = i + 1
-                     print(str(sel) + ' - ' + str(dirlist[i]))
-                     i += 1
-                  print('')
-                  lim = dirtotal + 1
-                  selectdir = raw_input('make a selection [1-%d] --> ' % dirtotal)
-                  if not re.match(r'^([1-9]?[0-9])$', str(selectdir)) or not int(selectdir) in range(1, lim):
-                     selectdir = raw_input('invalid entry. please enter a selection 1-%d --> ' % dirtotal)
-                  n = int(selectdir) - 1
-                  usedir = dirlist[n]
-                  usedirlocal = os.path.join(parentdir, usedir)
-                  usedirremote = parent + usedir
+                  usedirremote, subcont, parentdir = selectdir(cfurl)
+                  while subcont is not 0:
+                     newdir, subcont, parent = selectdir(usedirremote)
+                     checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
+                     while not re.match(r'^[1-3]$', checksubdir):
+                        checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
+                     if checksubdir == '2':
+                        usedirremote = newdir
+                     elif checksubdir == '3':
+                        usedirremote = parent
+                        break
+                     else:
+                        usedirremote = newdir
+                        break
+                            
                   print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % usedirremote)
                   try:
                      getCF(usedirremote, links)
@@ -579,6 +622,7 @@ def getCF(cfurl, links):
                      print("\r\nskipping %s... \n" % usedirremote)
                   except (KeyboardInterrupt, SystemExit):
                      print("\r\nrequest cancelled by user\n")
+                     keep = 0
                      break
                   except Exception, e:
                      print("\r\nan exception has occurred: %s \n" % str(e))
@@ -637,6 +681,8 @@ def getCF(cfurl, links):
          
             else:
                print("\ndid not find any links\n")
+               found = found - 1
+               keep = 0
                break
                
          else:
@@ -663,10 +709,22 @@ def getCF(cfurl, links):
                         raise
                   else:
                      continue
-               
-      else:
-         found -= 1
+                     
          print("\nno more links to fetch at %s.\n" % cfurl)
+         cpath = p.path.strip('/')
+         cpaths = cpath.split('/')
+         lastpath = cpaths[-1]
+         if len(lastpath) < 1 and len(cpaths) > 1:
+            lastpath = cpaths[-2]
+         cfurl = cfurl.strip('/')
+         matchtop = r'^(%s)$' % toplevel
+         if re.match(matchtop, cfurl):
+            keep = 0
+            print("\nfinished following all links.\n")
+            break
+         else:
+            cfurl = cfurl.rstrip(lastpath)
+            print('\ntrying %s.. \n' % cfurl)
    
 try:
    getCF(cfurl, links)
