@@ -532,7 +532,50 @@ def getCF(cfurl, links):
       if 'found' not in locals():
          found = getlinks(cfurl)
          keep = 1
+         
       while found > 0 and keep is not 0:
+         def followlinks(bx):
+            links = 0
+            s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+            shtml = BeautifulSoup(s.text)
+            sfindlinks = shtml.findAll('a')
+            slen = len(sfindlinks)
+            i = 0
+            while i < slen:
+               for slink in sfindlinks:
+                  sl = slink.get('href')
+                  if not re.match(r'^((\.\.)?\/)$', str(sl)):
+                     sx = bx + sl
+                     if '/' in sl[-1]:
+                        followlinks(sx)
+                     print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % sx)
+                     try:
+                        getCF(sx, links)
+                     except KeyboardInterrupt:
+                        print("\r\nskipping %s... \n" % sx)
+                        continue
+                     except (KeyboardInterrupt, SystemExit):
+                        print("\r\nrequest cancelled by user\n")
+                        break
+                     except Exception, e:
+                        print("\r\nan exception has occurred: %s \n" % str(e))
+                        raise
+                  else:
+                     print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
+                     try:
+                        getCF(bx, links)
+                     except KeyboardInterrupt:
+                        print("\r\nskipping %s... \n" % bx)
+                        continue
+                     except (KeyboardInterrupt, SystemExit):
+                        print("\r\nrequest cancelled by user\n")
+                        break
+                     except Exception, e:
+                        print("\r\nan exception has occurred: %s \n" % str(e))
+                        raise
+                        sys.exit(1)
+                  i += 1
+                  
          follow = raw_input('fetch harvested links? enter Y/N --> ')
          while not re.search(r'^[yYnN]$', follow):
             follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
@@ -609,26 +652,8 @@ def getCF(cfurl, links):
                         b = link.get('href')
                         bx = parent + b
                         if re.search(r'^(.*)(\/)$', str(b)):
-                           s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-                           shtml = BeautifulSoup(s.text)
-                           sfindlinks = shtml.findAll('a')
-                           for slink in sfindlinks:
-                              sl = slink.get('href')
-                              if not re.match(r'^((\.\.)?\/)$', str(sl)):
-                                 sx = bx + sl
-                                 print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % sx)
-                                 try:
-                                    getCF(sx, links)
-                                 except KeyboardInterrupt:
-                                    print("\r\nskipping %s... \n" % sx)
-                                    continue
-                                 except (KeyboardInterrupt, SystemExit):
-                                    print("\r\nrequest cancelled by user\n")
-                                    break
-                                 except Exception, e:
-                                    print("\r\nan exception has occurred: %s \n" % str(e))
-                                    raise
-                        else:
+                           followlinks(bx)
+                        else:         
                            print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
                            try:
                               getCF(bx, links)
