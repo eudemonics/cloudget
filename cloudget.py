@@ -489,7 +489,7 @@ def getCF(cfurl, links):
       
       p = urlparse(usedirremote)
       part = p.path.split('/')[-1]
-      path = p.path.strip(part)
+      path = p.path.rstrip(part)
       if '/' not in path[:1]:
          path = '/' + path
       toplevel = p.scheme + '://' + p.netloc
@@ -558,6 +558,7 @@ def getCF(cfurl, links):
                      depth = 1
                   else:
                      depth = 0
+                     break
                else:
                   if followdirs.lower() == 'y':
                      depth += 1
@@ -599,42 +600,35 @@ def getCF(cfurl, links):
                         found = 0
                         continue
                elif followdirs.lower() == 'y' and depth > 0:
-                  usedirremote, subcont, parentdir = selectdir(cfurl)
-                  while subcont is not 0:
-                     newdir, subcont, parent = selectdir(usedirremote)
-                     checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
-                     while not re.match(r'^[1-3]$', checksubdir):
-                        checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
-                     if checksubdir == '2':
-                        usedirremote = newdir
-                     elif checksubdir == '3':
-                        usedirremote = parent
-                        break
-                     else:
-                        usedirremote = newdir
-                        break
-                            
-                  print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % usedirremote)
-                  try:
-                     getCF(usedirremote, links)
-                     found = found - 1
-                  except KeyboardInterrupt:
-                     print("\r\nskipping %s... \n" % usedirremote)
-                  except (KeyboardInterrupt, SystemExit):
-                     print("\r\nrequest cancelled by user\n")
-                     keep = 0
-                     break
-                  except Exception, e:
-                     print("\r\nan exception has occurred: %s \n" % str(e))
-                     raise
-                     sys.exit(1)
-            
-               elif followdirs.lower() == 'y' and depth < 1:
-                  for link in findlinks:
-                     b = link.get('href')
-                     if not re.match(r'^((\.\.)?\/)$', str(b)):
+                  choosedir = raw_input("choose subdirectory? Y/N --> ")
+                  while not re.match(r'^[YyNn]$', choosedir):
+                     choosedir = raw_input("invalid entry. enter Y to pick subdirectory or N to download everything --> ")
+                  if choosedir.lower() == 'n':
+                     links = 0
+                     for link in findlinks:
+                        b = link.get('href')
+                        bx = parent + b
                         if re.search(r'^(.*)(\/)$', str(b)):
-                           bx = parent + b
+                           s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+                           shtml = BeautifulSoup(s.text)
+                           sfindlinks = shtml.findAll('a')
+                           for slink in sfindlinks:
+                              sl = slink.get('href')
+                              if not re.match(r'^((\.\.)?\/)$', str(sl)):
+                                 sx = bx + sl
+                                 print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % sx)
+                                 try:
+                                    getCF(sx, links)
+                                 except KeyboardInterrupt:
+                                    print("\r\nskipping %s... \n" % sx)
+                                    continue
+                                 except (KeyboardInterrupt, SystemExit):
+                                    print("\r\nrequest cancelled by user\n")
+                                    break
+                                 except Exception, e:
+                                    print("\r\nan exception has occurred: %s \n" % str(e))
+                                    raise
+                        else:
                            print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
                            try:
                               getCF(bx, links)
@@ -649,9 +643,56 @@ def getCF(cfurl, links):
                               print("\r\nan exception has occurred: %s \n" % str(e))
                               raise
                               sys.exit(1)
-                           finally:
-                              links = 0
-                        
+                  else:
+                     subcont = 1
+                     usedirremote = cfurl
+                     while subcont is not 0:
+                        if subcont < 1:
+                           break
+                        usedirremote, subcont, parent = selectdir(usedirremote)
+                        depth += 1
+                        checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
+                        while not re.match(r'^[1-3]$', checksubdir):
+                           checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
+                        if checksubdir is not 2:
+                           break
+                           
+                     print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % usedirremote)
+                     try:
+                        getCF(usedirremote, links)
+                        found = found - 1
+                     except KeyboardInterrupt:
+                        print("\r\nskipping %s... \n" % usedirremote)
+                     except (KeyboardInterrupt, SystemExit):
+                        print("\r\nrequest cancelled by user\n")
+                        keep = 0
+                        break
+                     except Exception, e:
+                        print("\r\nan exception has occurred: %s \n" % str(e))
+                        raise
+                        sys.exit(1)
+            
+               elif followdirs.lower() == 'y' and depth < 1:
+                  for link in findlinks:
+                     b = link.get('href')
+                     if not re.match(r'^((\.\.)?\/)$', str(b)):
+                        bx = parent + b
+                        print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
+                        try:
+                           getCF(bx, links)
+                           found = found - 1
+                        except KeyboardInterrupt:
+                           print("\r\nskipping %s... \n" % bx)
+                           continue
+                        except (KeyboardInterrupt, SystemExit):
+                           print("\r\nrequest cancelled by user\n")
+                           break
+                        except Exception, e:
+                           print("\r\nan exception has occurred: %s \n" % str(e))
+                           raise
+                           sys.exit(1)
+                        finally:
+                           links = 0
                      else:
                         continue
                      
