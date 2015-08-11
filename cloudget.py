@@ -3,7 +3,7 @@
 # release date: July 27, 2015
 # author: vvn < lost @ nobody . ninja >
 
-import sys, argparse, subprocess, os, re, random, requests, string, time, traceback
+import sys, argparse, codecs, subprocess, os, re, random, requests, string, time, traceback
 from datetime import date, datetime
 from urlparse import urlparse
 from subprocess import PIPE, check_output, Popen
@@ -110,13 +110,6 @@ else:
    proxystring = None
    print("not using proxy server \n")
    
-checklinks = ''
-
-if links == 1:
-   checklinks = 'yes'
-else:
-   checklinks = 'no'
-   
 if not re.match(r'^http$', cfurl[:4]):
    print("incomplete URL provided: %s \r\ntrying with http:// prepended..")
    cfurl = "http://" + cfurl
@@ -126,11 +119,25 @@ depth = 0
 def getCF(cfurl, links):
 
    checkcurl = ''
-
+   checklinks = ''
+   if links == 1:
+      checklinks = 'yes'
+      global followdirs
+   else:
+      checklinks = 'no'
    if usecurl == 1:
       checkcurl = 'yes'
    else:
       checkcurl = 'no'
+      
+   if debug == 1:
+      print("\nlocals: \n")
+      for name, val in locals().iteritems():
+         print("%s: %s" % (str(name), str(val)))
+      print("\nglobals: \n")
+      for name, val in globals().iteritems():
+         print("%s: %s" % (str(name), str(val)))
+      print('')
    print("using curl: %s \n" % checkcurl)
    print("harvesting links: %s \n" % checklinks)
    
@@ -139,14 +146,16 @@ def getCF(cfurl, links):
    path = p.path.strip(part)
    if '/' not in path[:1]:
       path = '/' + path
-   toplevel = p.scheme + '://' + p.netloc
-   parent = toplevel + path
+   urlfqdn = p.scheme + '://' + p.netloc
+   parent = urlfqdn + path
    childdir = path.strip('/')
    domaindir = os.path.join('download', p.netloc)
    parentdir = os.path.join(domaindir, childdir)
 
    if writeout == 1:
       global outfile
+      global existing
+      global checkresume
       p = urlparse(cfurl)
       if not os.path.exists('download'):
          os.makedirs('download')
@@ -158,9 +167,10 @@ def getCF(cfurl, links):
       dirs = filename.split('/')
       a = 'download'
       for dir in dirs:
-         a = os.path.join(a, dir)
-         if not os.path.exists(a):
-            os.makedirs(a)
+         if '.' not in dir:
+               a = os.path.join(a, dir)
+               if not os.path.exists(a):
+                  os.makedirs(a)
       if len(outfile) < 1 or outfile in p.netloc:
          outfile = 'index.html'
          outdir = filename
@@ -235,13 +245,23 @@ def getCF(cfurl, links):
       print("\nHEADERS: \n%s \n" % str(houtput))
       msg = "\nfetching %s using cURL.. \n" % cfurl
       if writeout == 1:
-         if os.path.exists(savefile):
+         if os.path.exists(savefile):            
             resumesize = os.path.getsize(savefile)
             print("\n%s already exists! \n" % outfile)
             print("\nlocal file size: %s bytes \n" % str(resumesize))
-            checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
-            while not re.match(r'^[1-3]$', checkresume):
-               checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+            if 'existing' not in globals():
+               existing = 0
+            if existing == 0:
+               checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
+               while not re.match(r'^[1-3]$', checkresume):
+                  checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+               checkexist = raw_input('\ndo this for all downloads? Y/N --> ')
+               while not re.match(r'^[YyNn]$', checkexist):
+                  checkexist = raw_input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
+               if checkexist.lower() == 'y':
+                  existing = 1
+               else:
+                  existing = 0
             if checkresume == '1':
                curlstring = curlstring + '-C - -o \'' + savefile + '\' '
                msg = "\ntrying to resume download using cURL to %s.. \n" % savefile
@@ -310,11 +330,12 @@ def getCF(cfurl, links):
       if errors:
          print("\nerrors: \n %s \n" % str(errors))
 
-   elif usecurl == 0 and writeout == 1: # min values r, dlmsg, dld, df, checkresume
+   elif usecurl == 0 and writeout == 1:
       getkb = lambda a: round(float(float(a)/1024),2)
       getmb = lambda b: round(float(float(b)/1048576),2)
       print("\ngetting %s... \n" % cfurl)
       if os.path.exists(savefile): # FOUND SAVED FILE
+         # GET SIZE OF EXISTING LOCAL FILE
          resumesize = os.path.getsize(savefile)
          ksize = getkb(resumesize)
          msize = getmb(resumesize)
@@ -326,9 +347,20 @@ def getCF(cfurl, links):
          existsize = str(fsize) + ' ' + sizeqt
          print("\n%s already exists! \n" % outfile)
          print("\nlocal file size: %s \n" % existsize)
-         checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start over with fresh download, 3) skip. --> ')
-         while not re.match(r'^[1-3]$', checkresume):
-            checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+         if 'existing' not in globals():
+            existing = 0
+         if existing == 0:
+            checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
+            while not re.match(r'^[1-3]$', checkresume):
+               checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+            checkexist = raw_input('\ndo this for all downloads? Y/N --> ')
+            while not re.match(r'^[YyNn]$', checkexist):
+               checkexist = raw_input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
+            if checkexist.lower() == 'y':
+               existing = 1
+            else:
+               existing = 0
+            
          if checkresume == '1': # RESUME DOWNLOAD AT LAST LOCAL BYTE
             dld = int(resumesize)
             resumeheader = {'Range': 'bytes=%s-' % str(dld)}
@@ -382,7 +414,7 @@ def getCF(cfurl, links):
                      done = int((50 * int(dld)) / int(filesize))
                      dldkb = getkb(dld)
                      dldmb = getmb(dld)
-                     unit = 'bytes'
+                     unit = 'b'
                      prog = str(round(dld,2))
                      if dldkb > 1:
                         unit = 'kb   '
@@ -465,7 +497,7 @@ def getCF(cfurl, links):
       linkresult = html.findAll('a')
       if len(linkresult) > 0:
          foundlinks = len(linkresult)
-         print('\nFOUND LINKS AT %s:\n' % cfurl)
+         print('\nFOUND %s LINKS AT %s:\n' % (str(foundlinks), cfurl))
          for link in linkresult:
             b = link.get('href')
             b = str(b)
@@ -474,10 +506,11 @@ def getCF(cfurl, links):
       else:
          print('\nNO LINKS FOUND.\n')
          foundlinks = 0
+      time.sleep(4)
       return foundlinks
       
-   def selectdir(usedirremote):
-      r = scraper.get(usedirremote, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+   def selectdir(geturl):
+      r = scraper.get(geturl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       html = BeautifulSoup(r.text)
       findlinks = html.findAll('a')
       dirlist = []
@@ -487,13 +520,13 @@ def getCF(cfurl, links):
             if re.search(r'^(.*)(\/)$', str(b)):
                dirlist.append(b)
       
-      p = urlparse(usedirremote)
+      p = urlparse(geturl)
       part = p.path.split('/')[-1]
       path = p.path.rstrip(part)
       if '/' not in path[:1]:
          path = '/' + path
-      toplevel = p.scheme + '://' + p.netloc
-      parent = toplevel + path
+      urlfqdn = p.scheme + '://' + p.netloc
+      parent = urlfqdn + path
       
       i = 0
       dirtotal = len(dirlist)
@@ -505,9 +538,9 @@ def getCF(cfurl, links):
             i += 1
          print('')
          lim = dirtotal + 1
-         matchtop = r'^(%s)(\/)?$' % toplevel
-         if not re.match(matchtop,usedirremote):
-            print('0 - RETURN UP ONE LEVEL TO PARENT DIRECTORY \n')
+         matchtop = r'^(%s)(\/)?$' % urlfqdn
+         if not re.match(matchtop,geturl):
+            print('0 - BACK TO PARENT DIRECTORY \n')
             startsel = '0-%d' % dirtotal
          else:
             startsel = '1-%d' % dirtotal
@@ -515,84 +548,83 @@ def getCF(cfurl, links):
          if not int(selectdir) in range(0, lim):
             selectdir = raw_input('invalid entry. please enter a selection %s --> ' % startsel)
          if selectdir == '0':
-            usedirremote = parent
+            geturl = parent
             subcont = 0
          else:
             n = int(selectdir) - 1
             usedir = dirlist[n]
-            usedirremote = parent + usedir
+            geturl = parent + usedir
             subcont = 1
       else:
-         print('\nNO DIRECTORIES FOUND. searching in current directory..\n')
+         print('\nNO DIRECTORIES FOUND. using current directory.. \n')
          subcont = 0
-         usedirremote = parent + part
-      return usedirremote, subcont, parent
+         geturl = parent + part
+      return geturl, subcont, parent
+      
+   def followlinks(bx):
+      p = urlparse(bx)
+      if '/' not in p.path[-1:]:
+         part = p.path.split('/')[-1]
+         path = p.path.rstrip(part)
+      else:
+         path = p.path
+      if '/' not in path[:1]:
+         path = '/' + path
+      urlfqdn = p.scheme + '://' + p.netloc
+      parent = urlfqdn + path + '/'
+      s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+      shtml = BeautifulSoup(s.text.encode("utf-8"))
+      sfindlinks = shtml.findAll('a')
+      slen = len(sfindlinks)
+      sdirs = []
+      si = 0
+      while si < slen:
+         for slink in sfindlinks:
+            sl = slink.get('href')
+            if sl:
+               if not re.search(r'^((\.\.)?\/)$', str(sl)):
+                  if '/' in bx[-1:]:
+                     sx = bx + sl
+                  else:
+                     sx = parent + sl
+                  sx = str(sx)
+                  sdirs.append(sx)
+               si += 1
+                  #if re.search(r'^(.*)(\/)$', str(bx)):
+            else:
+               si += 1
+               continue
+      for sd in sdirs:
+         print('%s \n' % sd)
+         getCF(sd, links)
+      return sdirs
 
    if links == 1:
       if 'found' not in locals():
          found = getlinks(cfurl)
          keep = 1
-         
+         depth = 0
       while found > 0 and keep is not 0:
-         def followlinks(bx):
-            links = 0
-            s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-            shtml = BeautifulSoup(s.text)
-            sfindlinks = shtml.findAll('a')
-            slen = len(sfindlinks)
-            i = 0
-            while i < slen:
-               for slink in sfindlinks:
-                  sl = slink.get('href')
-                  if not re.match(r'^((\.\.)?\/)$', str(sl)):
-                     sx = bx + sl
-                     if '/' in sl[-1]:
-                        followlinks(sx)
-                     print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % sx)
-                     try:
-                        getCF(sx, links)
-                     except KeyboardInterrupt:
-                        print("\r\nskipping %s... \n" % sx)
-                        continue
-                     except (KeyboardInterrupt, SystemExit):
-                        print("\r\nrequest cancelled by user\n")
-                        break
-                     except Exception, e:
-                        print("\r\nan exception has occurred: %s \n" % str(e))
-                        raise
-                  else:
-                     print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
-                     try:
-                        getCF(bx, links)
-                     except KeyboardInterrupt:
-                        print("\r\nskipping %s... \n" % bx)
-                        continue
-                     except (KeyboardInterrupt, SystemExit):
-                        print("\r\nrequest cancelled by user\n")
-                        break
-                     except Exception, e:
-                        print("\r\nan exception has occurred: %s \n" % str(e))
-                        raise
-                        sys.exit(1)
-                  i += 1
-                  
          follow = raw_input('fetch harvested links? enter Y/N --> ')
          while not re.search(r'^[yYnN]$', follow):
             follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
-      
-         if follow.lower() == 'y':
+         if follow.lower() == 'n':
+            break
+         elif follow.lower() == 'y':
             r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
             html = BeautifulSoup(r.text)
             findlinks = html.findAll('a')
             s = []
             checkfordirs = 0
-            for d in findlinks:
-               if '/' in d.get('href')[-1]:
-                  if not re.search(r'^(.*)(\/)$', str(d)):
-                     s.append(str(d))
-                     checkfordirs = 1
+            if len(findlinks) > 0:
+               for d in findlinks:
+                  dd = d.get('href')
+                  if re.search(r'^(.*)(\/)$', str(dd)):
+                     if not re.match(r'^((\.\.)?\/)$', str(dd)):
+                        s.append(str(dd))
+                        checkfordirs = 1
             
-            if len(s) > 1 and checkfordirs == 1:
+            if len(s) > 0 and checkfordirs == 1:
                if 'followdirs' not in locals():
                   followdirs = raw_input('follow directories? enter Y/N --> ')
                   while not re.search(r'^[yYnN]$', followdirs):
@@ -601,15 +633,14 @@ def getCF(cfurl, links):
                      depth = 1
                   else:
                      depth = 0
-                     break
                else:
                   if followdirs.lower() == 'y':
                      depth += 1
-                  else:
-                     depth -= 1
             else:
                followdirs = 'n'
-               
+            
+            if debug == 1:
+               print("\ndepth: %d \n" % depth)      
             if findlinks:
                total = len(findlinks)
             else:
@@ -619,29 +650,34 @@ def getCF(cfurl, links):
                   os.makedirs(parentdir)
             if total > 0:
                if followdirs.lower() == 'n':
-                  links = 0
                   for link in findlinks:
                      b = link.get('href')
-                     if not re.search(r'^(.*)(\/)$', str(b)):
-                        b = parent + b
-                        print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % b)
-                        try:
-                           getCF(b, links)
-                        except KeyboardInterrupt:
-                           print("\r\nskipping %s...\n" % b)
+                     if b:
+                        if not re.search(r'^(.*)(\/)$', str(b)):
+                           b = parent + b
+                           print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % b)
+                           try:
+                              getCF(b, links)
+                           except KeyboardInterrupt:
+                              try:
+                                 print("\r\nskipping %s... press CTRL + C again to quit.\n" % b)
+                                 continue
+                              except KeyboardInterrupt:
+                                 print("\nrequest cancelled.\n")
+                                 break
+                           except (KeyboardInterrupt, SystemExit):
+                              print("\r\nrequest cancelled by user\n")
+                              keep = 0
+                              break
+                           except Exception, e:
+                              print("\r\nan exception has occurred: %s \n" % str(e))
+                              raise
+                        else:
                            continue
-                        except (KeyboardInterrupt, SystemExit):
-                           print("\r\nrequest cancelled by user\n")
-                           keep = 0
-                           break
-                        except Exception, e:
-                           print("\r\nan exception has occurred: %s \n" % str(e))
-                           raise
-                        finally:
-                           found = 0
                      else:
-                        found = 0
-                        continue
+                        break
+                     total = total - 1
+                  links = 1
                elif followdirs.lower() == 'y' and depth > 0:
                   choosedir = raw_input("choose subdirectory? Y/N --> ")
                   while not re.match(r'^[YyNn]$', choosedir):
@@ -650,44 +686,66 @@ def getCF(cfurl, links):
                      links = 0
                      for link in findlinks:
                         b = link.get('href')
-                        bx = parent + b
-                        if re.search(r'^(.*)(\/)$', str(b)):
-                           followlinks(bx)
-                        else:         
-                           print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
-                           try:
-                              getCF(bx, links)
-                              found = found - 1
-                           except KeyboardInterrupt:
-                              print("\r\nskipping %s... \n" % bx)
-                              continue
-                           except (KeyboardInterrupt, SystemExit):
-                              print("\r\nrequest cancelled by user\n")
-                              break
-                           except Exception, e:
-                              print("\r\nan exception has occurred: %s \n" % str(e))
-                              raise
-                              sys.exit(1)
+                        if b:
+                           bx = parent + b
+                        
+                           if not re.match(r'^((\.\.)?\/)$', str(b)):
+                              getdirs = followlinks(bx)
+                              while len(getdirs) > 0:
+                                 for sd in getdirs:
+                                    getdirs = followlinks(sd)
+                              print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
+                              try:
+                                 getCF(bx, links)
+                                 if debug == 1:
+                                    print("\nfound: %d \n" % found)
+                              except KeyboardInterrupt:
+                                 try:
+                                    print("\r\nskipping %s... press CTRL + C again to quit.\n" % bx)
+                                    continue
+                                 except KeyboardInterrupt:
+                                    print("\nrequest cancelled.\n")
+                                    sys.exit()
+                              except (KeyboardInterrupt, SystemExit):
+                                 print("\r\nrequest cancelled by user\n")
+                                 break
+                              except Exception, e:
+                                 print("\r\nan exception has occurred: %s \n" % str(e))
+                                 raise
+                                 sys.exit(1)
+                     links = 1
+                     found = found - 1
                   else:
                      subcont = 1
-                     usedirremote = cfurl
+                     geturl = cfurl
                      while subcont is not 0:
+                        depth += 1
                         if subcont < 1:
                            break
-                        usedirremote, subcont, parent = selectdir(usedirremote)
-                        depth += 1
+                        geturl, subcont, parent = selectdir(geturl)
+                        if debug == 1:
+                           print("\ndepth: %d \n" % depth)
                         checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
                         while not re.match(r'^[1-3]$', checksubdir):
                            checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
                         if checksubdir is not 2:
+                           if checksubdir == '3':
+                              p = urlparse(geturl)
+                              droppath = p.path.split('/')[-1]
+                              geturl = geturl.rstrip(droppath)
                            break
-                           
-                     print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % usedirremote)
+                        
+                     print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % geturl)
                      try:
-                        getCF(usedirremote, links)
+                        getCF(geturl, links)
                         found = found - 1
                      except KeyboardInterrupt:
-                        print("\r\nskipping %s... \n" % usedirremote)
+                        try:
+                           print("\r\nskipping %s... press CTRL + C again to quit.\n" % geturl)
+                           continue
+                        except KeyboardInterrupt:
+                           print("\nrequest cancelled.\n")
+                           break
                      except (KeyboardInterrupt, SystemExit):
                         print("\r\nrequest cancelled by user\n")
                         keep = 0
@@ -696,19 +754,26 @@ def getCF(cfurl, links):
                         print("\r\nan exception has occurred: %s \n" % str(e))
                         raise
                         sys.exit(1)
-            
+                     finally:
+                        depth -= 1
+                        if debug == 1:
+                           print("\ndepth: %d \n" % depth)
+         
                elif followdirs.lower() == 'y' and depth < 1:
                   for link in findlinks:
                      b = link.get('href')
-                     if not re.match(r'^((\.\.)?\/)$', str(b)):
+                     if not re.  match(r'^((\.\.)?\/)$', str(b)):
                         bx = parent + b
                         print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
                         try:
                            getCF(bx, links)
-                           found = found - 1
                         except KeyboardInterrupt:
-                           print("\r\nskipping %s... \n" % bx)
-                           continue
+                           try:
+                              print("\r\nskipping %s... press CTRL + C again to quit.\n" % bx)
+                              continue
+                           except KeyboardInterrupt:
+                              print("\nrequest cancelled.\n")
+                              break
                         except (KeyboardInterrupt, SystemExit):
                            print("\r\nrequest cancelled by user\n")
                            break
@@ -720,12 +785,16 @@ def getCF(cfurl, links):
                            links = 0
                      else:
                         continue
-                     
                      found = found - 1
-                     
+                     if debug == 1:
+                        print("\nfound: %d \n" % found)
+                  
                else:
                   for link in findlinks:
                      b = link.get('href')
+                     links = 0
+                     if debug == 1:
+                        print("\nfound: %d \n" % found)
                      while b:
                         if not re.search(r'^(.*)(\/)$', str(b)):
                            b = parent + b
@@ -743,55 +812,53 @@ def getCF(cfurl, links):
                               raise
                         else:
                            continue
+                     if debug == 1:
                         found = found - 1
-         
+                     print("\nfound: %d \n" % found)
+                  links = 1
             else:
                print("\ndid not find any links\n")
                found = found - 1
+               if debug == 1:
+                  print("\nfound: %d \n" % found)
                keep = 0
                break
-               
+         
          else:
-            r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-            html = BeautifulSoup(r.text)
-            findlinks = html.findAll('a')
-            links = 0
-            for link in findlinks:
-               b = link.get('href')
-               while b:
-                  if not re.search(r'^(.*)(\/)$', str(b)):
-                     b = parent + b
-                     print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % b)
-                     try:
-                        getCF(b, links)
-                     except KeyboardInterrupt:
-                        print("\r\nskipping %s...\n" % b)
-                        continue
-                     except (KeyboardInterrupt, SystemExit):
-                        print("\r\nrequest cancelled by user\n")
-                        break
-                     except Exception, e:
-                        print("\r\nan exception has occurred: %s \n" % str(e))
-                        raise
-                  else:
-                     continue
+            cpath = p.path.strip('/')
+            cpaths = cpath.split('/')
+            lastpath = cpaths[-1]
+            if len(lastpath) < 1 and len(cpaths) > 1:
+               lastpath = cpaths[-2]
+            cfurl = cfurl.strip('/')
+            matchtop = r'^(%s)$' % urlfqdn
+            if found == 0:
+               keep = 0
+               print("\nfinished following all links.\n")
+            break
+            
+      else:
+         found = 0
                      
          print("\nno more links to fetch at %s.\n" % cfurl)
+         if debug == 1:
+            print("\nfound: %d \n" % found)
          cpath = p.path.strip('/')
          cpaths = cpath.split('/')
          lastpath = cpaths[-1]
          if len(lastpath) < 1 and len(cpaths) > 1:
             lastpath = cpaths[-2]
          cfurl = cfurl.strip('/')
-         matchtop = r'^(%s)$' % toplevel
-         if re.match(matchtop, cfurl):
+         urlfqdn = urlfqdn.strip('/')
+         print(urlfqdn)
+         matchtop = r'^(%s)$' % urlfqdn
+         if re.match(matchtop, cfurl) and found == 0:
             keep = 0
             print("\nfinished following all links.\n")
-            break
          else:
             cfurl = cfurl.rstrip(lastpath)
             print('\ntrying %s.. \n' % cfurl)
-   
+            
 try:
    getCF(cfurl, links)
 
