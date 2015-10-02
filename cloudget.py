@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget v0.69
-# release date: July 27, 2015
+# cloudget v0.70
+# release date: October 2, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, codecs, subprocess, os, re, random, requests, string, time, traceback
@@ -19,29 +19,31 @@ except:
       print('unable to install the cfscrape module via pip. this script requires cfscrape to run. get it here: https://github.com/Anorov/cloudflare-scrape')
       sys.exit(1)
 
-intro = '''
-=========================================
------------- CLOUDGET v0.69 -------------
-=========================================
-------------- author : vvn --------------
------ lost [at] nobody [dot] ninja ------
-=========================================
------- support my work: buy my EP! ------
----------- http://dreamcorp.us ----------
------ facebook.com/dreamcorporation -----
--------- thanks for the support! --------
-=========================================
-'''
+intro = '''\n\033[40m\033[34m
+=============================================================\033[0m\033[40m\033[32m
+=============================================================\033[0m\033[40m\033[90;1m
+---------------------- CLOUDGET v0.70 -----------------------\033[0m\033[40m\033[34;21m
+=============================================================\033[0m\033[40m\033[32m
+=============================================================\033[0m\033[41m\033[33m
+----------------------- author : vvn ------------------------\033[0m\033[41m\033[33m
+--------------- lost [at] nobody [dot] ninja ----------------\033[0m\033[40m\033[37;1m
+=============================================================\033[0m\033[40m\033[35;21m
+---------------- support my work: buy my EP! ----------------\033[0m\033[40m\033[36m
+-------------------- http://dreamcorp.us --------------------\033[0m\033[40m\033[36m
+--------------- facebook.com/dreamcorporation ---------------\033[0m\033[40m\033[31;1m
+------------------ thanks for the support! ------------------\033[0m\033[40m\033[37;1m
+=============================================================\033[0;21m\033[0m
+\n'''
 
 print(intro)
 
 try:
-   from BeautifulSoup import BeautifulSoup
+   from bs4 import BeautifulSoup, UnicodeDammit
 except:
    pass
    try:
       os.system('pip install BeautifulSoup')
-      from BeautifulSoup import BeautifulSoup
+      from bs4 import BeautifulSoup
    except:
       print('BeautifulSoup module is required to run the script.')
       sys.exit(1)
@@ -53,6 +55,8 @@ global depth
 global useproxy
 global debug
 global depth
+global finished
+global firsturl
 usecurl = 0
 writeout = 0
 depth = 0
@@ -60,16 +64,17 @@ useproxy = 0
 debug = 0
 depth = 0
 links = 0
+finished = []
 
 parser = argparse.ArgumentParser(description="a script to automatically bypass anti-robot measures and download links from servers behind a cloudflare proxy")
- 
+
 parser.add_argument('-u', '--url', action='store', help='[**REQUIRED**] full cloudflare URL to retrieve, beginning with http(s)://', required=True)
 parser.add_argument('-o', '--out', help='save returned content to \'download\' subdirectory', action='store_true', required=False)
 parser.add_argument('-l', '--links', help='scrape content returned from server for links', action='store_true', required=False)
 parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', dest='curl', metavar='CURL_OPTS', help='use cURL. use %(metavar)s to pass optional cURL parameters. (for more info try \'curl --manual\')', required=False)
 parser.add_argument('-p', '--proxy', action='store', metavar='PROXY_SERVER:PORT', help='use a proxy to connect to remote server at [protocol]://[host]:[port] (example: -p http://localhost:8080) **only use HTTP or HTTPS protocols!', required=False)
 parser.add_argument('-d', '--debug', help='show detailed stack trace on exceptions', action='store_true', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s v0.69 by vvn <lost@nobody.ninja>, released july 27, 2015.')
+parser.add_argument('--version', action='version', version='%(prog)s v0.70 by vvn <lost@nobody.ninja>, released october 2, 2015.')
 
 args = parser.parse_args()
 if args.out:
@@ -95,9 +100,10 @@ else:
    usecurl = 1
    global curlopts
    curlopts = args.curl
-   
+
 cfurl = args.url
-   
+firsturl = cfurl
+
 print("\nURL TO FETCH: %s \n" % cfurl)
 
 if 'proxy' in locals():
@@ -109,7 +115,7 @@ if 'proxy' in locals():
 else:
    proxystring = None
    print("not using proxy server \n")
-   
+
 if not re.match(r'^http$', cfurl[:4]):
    print("incomplete URL provided: %s \r\ntrying with http:// prepended..")
    cfurl = "http://" + cfurl
@@ -129,18 +135,18 @@ def getCF(cfurl, links):
       checkcurl = 'yes'
    else:
       checkcurl = 'no'
-      
+
    if debug == 1:
-      print("\nlocals: \n")
+      print("\n\033[32;1mlocals: \n\033[0m")
       for name, val in locals().iteritems():
-         print("%s: %s" % (str(name), str(val)))
-      print("\nglobals: \n")
+         print("\033[35;1m%s:\033[32;21m %s \033[0m" % (str(name), str(val)))
+      print("\n\033[32;1mglobals: \n\033[0m")
       for name, val in globals().iteritems():
-         print("%s: %s" % (str(name), str(val)))
-      print('')
-   print("using curl: %s \n" % checkcurl)
-   print("harvesting links: %s \n" % checklinks)
-   
+         print("\n\033[35;1m%s:\033[36;21m %s \033[0m" % (str(name), str(val)))
+      print('\033[0m\r\n')
+      print("\n\033[31;1musing curl:\033[31;21m\033[33m %s \033[0m\n" % checkcurl)
+      print("\n\033[34;1mharvesting links:\033[34;21m\033[33m %s \033[0m\n" % checklinks)
+
    p = urlparse(cfurl)
    part = p.path.split('/')[-1]
    path = p.path.strip(part)
@@ -151,6 +157,10 @@ def getCF(cfurl, links):
    childdir = path.strip('/')
    domaindir = os.path.join('download', p.netloc)
    parentdir = os.path.join(domaindir, childdir)
+   
+   if firsturl in finished and cfurl in firsturl:
+      print('\nABORTING: already retrieved %s!\n') % firsturl
+      sys.exit(1)
 
    if writeout == 1:
       global outfile
@@ -159,22 +169,28 @@ def getCF(cfurl, links):
       p = urlparse(cfurl)
       if not os.path.exists('download'):
          os.makedirs('download')
-      domaindir = os.path.join('download', p.netloc)
+      if not os.path.exists(domaindir):
+         os.makedirs(domaindir)
       outfile = cfurl.split('?')[0]
       outfile = outfile.split('/')[-1]
       filename = cfurl.lstrip('https:').strip('/')
       filename = filename.rstrip(outfile)
       dirs = filename.split('/')
       a = 'download'
+      i = 1
       for dir in dirs:
-         if '.' not in dir:
+         while i < len(dirs):
+            if not re.search(r'^(.*)\.[.]+$', dir):
                a = os.path.join(a, dir)
                if not os.path.exists(a):
                   os.makedirs(a)
+               i += 1
+            else:
+               break
       if len(outfile) < 1 or outfile in p.netloc:
          outfile = 'index.html'
-         outdir = filename
-      else:  
+         outdir = filename.strip()
+      else:
          part = outfile
          outdir = filename.rstrip(part)
       fulloutdir = os.path.join('download', outdir)
@@ -188,54 +204,83 @@ def getCF(cfurl, links):
       fullsavefile = os.path.join(cwd, savefile)
       print("full path to output file: %s \n" % fullsavefile)
 
-   print("sending request..\n")
    scraper = cfscrape.create_scraper()
    ualist = [
-'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36', 
-'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko', 
-'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko', 
-'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)', 
-'Mozilla/5.0 (compatible; MSIE 9.0; AOL 9.7; AOLBuild 4343.19; Windows NT 6.1; WOW64; Trident/5.0; FunWebProducts)', 
-'Mozilla/5.0 (Windows NT 6.3; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36', 
-'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36', 
-'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36', 
-'Mozilla/5.0 (Windows NT 6.1 WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36', 
-'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A', 
-'Mozilla/5.0 (X11; SunOS i86pc; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; FreeBSD amd64; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; Linux x86_64; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; FreeBSD i386; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; Linux i586; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; OpenBSD amd64; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; OpenBSD alpha; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; OpenBSD sparc64; rv:38.0) Gecko/20100101 Firefox/38.0', 
-'Mozilla/5.0 (X11; Linux x86_64; rv:17.0) Gecko/20121202 Firefox/17.0 Iceweasel/17.0.1', 
-'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16', 
-'Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14 Mozilla/5.0 (Windows NT 6.0; rv:2.0) Gecko/20100101 Firefox/4.0 Opera 12.14', 
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko',
+'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko',
+'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)',
+'Mozilla/5.0 (compatible; MSIE 9.0; AOL 9.7; AOLBuild 4343.19; Windows NT 6.1; WOW64; Trident/5.0; FunWebProducts)',
+'Mozilla/5.0 (Windows NT 6.3; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36',
+'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36',
+'Mozilla/5.0 (Windows NT 6.1 WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36',
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/7046A194A',
+'Mozilla/5.0 (X11; SunOS i86pc; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; FreeBSD amd64; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; Linux x86_64; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; FreeBSD i386; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; Linux i586; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; OpenBSD amd64; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; OpenBSD alpha; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; OpenBSD sparc64; rv:38.0) Gecko/20100101 Firefox/38.0',
+'Mozilla/5.0 (X11; Linux x86_64; rv:17.0) Gecko/20121202 Firefox/17.0 Iceweasel/17.0.1',
+'Opera/9.80 (X11; Linux i686; Ubuntu/14.10) Presto/2.12.388 Version/12.16',
+'Opera/9.80 (Windows NT 6.0) Presto/2.12.388 Version/12.14 Mozilla/5.0 (Windows NT 6.0; rv:2.0) Gecko/20100101 Firefox/4.0 Opera 12.14',
 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.0) Opera 12.14'
-] 
+]
    n = random.randint(0,len(ualist)) - 1
    ua = ualist[n].strip()
+   
+   def cfcookie(cfurl):
+      sess = requests.session()
+      p = urlparse(cfurl)
+      mnt = p.scheme + '://'
+      sess.mount(mnt, cfscrape.CloudflareAdapter())
+      sess.get(cfurl)
+      cookies = "\"cf_clearance\"=\"%s\";\"__cfduid\"=\"%s\"" % (sess.cookies["cf_clearance"] , sess.cookies["__cfduid"])
+      return cookies
 
+   def getpage(cfurl):      
+      r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+      if 'text' in r.headers.get('Content-Type'):
+         rt = UnicodeDammit.detwingle(r.text)
+         html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+         print('\r\n--------------------------------------------------------\r\n')
+         if debug == 1:
+            orenc = str(html.original_encoding)
+            print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
+         bs = html.prettify(formatter=None)
+         print(bs)
+         print('\r\n--------------------------------------------------------\r\n')
+      else:
+         found = -1
+      
+      if debug == 1:
+         print('\n\033[34mDEBUG: finished list length: \033[37;1m%d \033[0m\n' % len(finished))
+         
+   # cURL request - using cURL for cloudflare URLs doesn't seem to work
    if usecurl == 1:
+
       r = scraper.get(cfurl, stream=True, verify=False, allow_redirects=True, proxies=proxystring)
       print("status: ")
       print(r.status_code)
       print("\ngetting cookies for %s.. \n" % cfurl)
-      cookie_arg = cfscrape.get_cookie_string(cfurl)
+      cookie_arg = cfcookie(cfurl)
       if cookie_arg:
          req = "GET / HTTP/1.1\r\n"
          req += "Cookie: %s\r\nUser-Agent: %s\r\n" % (cookie_arg, ua)
-         houtput = check_output(["curl", "--cookie", cookie_arg, "-A", ua, "-I", cfurl])
+         houtput = check_output(["curl", "--cookie", cookie_arg, "-A", ua])
          curlstring = '--cookie \'' + cookie_arg + '\' -A \'' + ua + '\' -L -k '
          if 'curlopts' in locals():
             curlstring = '--cookie \'' + cookie_arg + '\' ' + curlopts + ' -A \'' + ua + '\' -k '
       else:
+         cookie_arg = cfscrape.get_cookie_string(cfurl)
          req = "GET / HTTP/1.1\r\n"
          req += "User-Agent: %s\r\n" % ua
-         houtput = check_output(["curl", "-A", ua, "-I", cfurl])
+         houtput = check_output(["curl", "-A", ua])
          curlstring = '-A \'' + ua + '\' -L -k '
          if 'curlopts' in locals():
             curlstring = '-# ' + curlopts + ' -A \'' + ua + '\' -k '
@@ -245,7 +290,7 @@ def getCF(cfurl, links):
       print("\nHEADERS: \n%s \n" % str(houtput))
       msg = "\nfetching %s using cURL.. \n" % cfurl
       if writeout == 1:
-         if os.path.exists(savefile):            
+         if os.path.exists(savefile):
             resumesize = os.path.getsize(savefile)
             print("\n%s already exists! \n" % outfile)
             print("\nlocal file size: %s bytes \n" % str(resumesize))
@@ -308,8 +353,8 @@ def getCF(cfurl, links):
             if writeout == 0:
                cs += '-v '
                #command = 'cd download && { curl ' + cs + cfurl + ' ; cd -; }'
-         if re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm|\/)$',cfurl) or re.search(r'(\.htm[l]?|\.php|\.[aj]sp[x]?|\.cfm)$', outfile):
-            print(ht.prettify())
+         if re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$',cfurl) or re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$', outfile):
+            print(ht.prettify(formatter=None))
       else:
          if errors:
             print("\nerror: %s\n" % str(errors))
@@ -329,6 +374,7 @@ def getCF(cfurl, links):
          print("\nresponse: \n %s \n" % str(res))
       if errors:
          print("\nerrors: \n %s \n" % str(errors))
+      finished.append(cfurl)
 
    elif usecurl == 0 and writeout == 1:
       getkb = lambda a: round(float(float(a)/1024),2)
@@ -360,7 +406,7 @@ def getCF(cfurl, links):
                existing = 1
             else:
                existing = 0
-            
+
          if checkresume == '1': # RESUME DOWNLOAD AT LAST LOCAL BYTE
             dld = int(resumesize)
             resumeheader = {'Range': 'bytes=%s-' % str(dld)}
@@ -375,16 +421,16 @@ def getCF(cfurl, links):
             resumeheader = None
             df = open(savefile, 'r+')
             dlmsg = "\nskipping download for %s\n" % outfile
-   
+
       else: # NEW DOWNLOAD REQUEST
          checkresume = '2'
          dld = 0
          df = open(savefile, 'wb+')
          resumeheader = None
          dlmsg = "\nwriting content to \'download\' directory as file %s. this may take awhile depending on file size... \n" % outfile
-   
+
       print(dlmsg)
-   
+
       if not checkresume == '3': # IF NOT SKIPPING
          r = scraper.get(cfurl, stream=True, headers=resumeheader, verify=False, allow_redirects=True, proxies=proxystring)
          filesize = r.headers.get('Content-Length')
@@ -477,23 +523,25 @@ def getCF(cfurl, links):
          print("\ndownload time elapsed: %s \n" % str(elapsed))
          time.sleep(4)
          print('\r\n--------------------------------------------------------\r\n')
-               
+
       else:
          print("\nskipped download from %s.\r\nfile has not been modified.\n" % cfurl)
       
-      r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      if 'text' in r.headers.get('Content-Type'):
-         html = BeautifulSoup(r.text)
-         bs = html.prettify()
-         print(bs)
-         print('\r\n--------------------------------------------------------\r\n')
-      else:
-         found = -1
+      getpage(cfurl)
+      finished.append(cfurl)
       
+   else:
+      getpage(cfurl)
+      finished.append(cfurl)
+
    def getlinks(cfurl):
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      html = BeautifulSoup(r.text)
-      bs = html.prettify()
+      rt = UnicodeDammit.detwingle(r.text)
+      html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+      if debug == 1:
+         orenc = str(html.original_encoding)
+         print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
+      bs = html.prettify(formatter=None)
       linkresult = html.findAll('a')
       if len(linkresult) > 0:
          foundlinks = len(linkresult)
@@ -501,17 +549,22 @@ def getCF(cfurl, links):
          for link in linkresult:
             b = link.get('href')
             b = str(b)
-            print(b)
+            if b not in cfurl and not re.match(r'^(\.\.)?\/$', b):
+               print(b)
          print('')
       else:
          print('\nNO LINKS FOUND.\n')
          foundlinks = 0
       time.sleep(4)
       return foundlinks
-      
+
    def selectdir(geturl):
       r = scraper.get(geturl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      html = BeautifulSoup(r.text)
+      rt = UnicodeDammit.detwingle(r.text)
+      html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+      if debug == 1:
+         orenc = str(html.original_encoding)
+         print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
       findlinks = html.findAll('a')
       dirlist = []
       for link in findlinks:
@@ -519,7 +572,7 @@ def getCF(cfurl, links):
          if not re.match(r'^((\.\.)?\/)$', str(b)):
             if re.search(r'^(.*)(\/)$', str(b)):
                dirlist.append(b)
-      
+
       p = urlparse(geturl)
       part = p.path.split('/')[-1]
       path = p.path.rstrip(part)
@@ -527,7 +580,7 @@ def getCF(cfurl, links):
          path = '/' + path
       urlfqdn = p.scheme + '://' + p.netloc
       parent = urlfqdn + path
-      
+
       i = 0
       dirtotal = len(dirlist)
       if dirtotal > 0:
@@ -561,6 +614,24 @@ def getCF(cfurl, links):
          geturl = parent + part
       return geturl, subcont, parent
       
+   def getparent(cfurl):
+      cff = re.match(r'^http:\/\/(.*)(\/\/)(.*)', cfurl)
+      if cff:
+         cf = 'http://' + str(cff.group(1)) + '/' + str(cff.group(3))
+      else:
+         cf = str(cfurl)
+      p = urlparse(cf)
+      if '/' not in p.path[-1:]:
+         part = p.path.split('/')[-1]
+         path = p.path.rstrip(part)
+      else:
+         path = p.path
+      if '/' not in path[:1]:
+         path = '/' + path
+      urlfqdn = p.scheme + '://' + p.netloc
+      parent = urlfqdn + path + '/'
+      return parent
+
    def followlinks(bx):
       p = urlparse(bx)
       if '/' not in p.path[-1:]:
@@ -573,30 +644,115 @@ def getCF(cfurl, links):
       urlfqdn = p.scheme + '://' + p.netloc
       parent = urlfqdn + path + '/'
       s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      shtml = BeautifulSoup(s.text.encode("utf-8"))
+      print('\n----------------------------------------------------------- \n')
+      print(s)
+      print('\n')
+      scr = UnicodeDammit.detwingle(s.text)
+      shtml = BeautifulSoup(scr, "html.parser")
+      if debug == 1:
+         orenc = str(shtml.original_encoding)
+         print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
+      print('\n----------------------------------------------------------- \n')
       sfindlinks = shtml.findAll('a')
       slen = len(sfindlinks)
       sdirs = []
       si = 0
       while si < slen:
          for slink in sfindlinks:
+            if debug == 1:
+               print('\n\033[34;1mSLINK LOOP\r\n\033[32;21m* si = %d, si < %d\033[0m\n' % (si, slen))
             sl = slink.get('href')
+            si += 1
             if sl:
                if not re.search(r'^((\.\.)?\/)$', str(sl)):
                   if '/' in bx[-1:]:
-                     sx = bx + sl
+                     if 'http' not in sl[:4]:
+                        sl = sl.lstrip('/')
+                        sx = bx + sl
+                     else:
+                        sx = sl
+                     print(sx)
+                     getCF(sx, 0)
+                     ss = scraper.get(sx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
+                     bs = BeautifulSoup(ss.text, "html.parser")
+                     if bs is not None:                        
+                        if debug == 1:
+                           orenc = str(bs.original_encoding)
+                           print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
+                        pagehead = bs.html.head.contents
+                        pagehead = str(pagehead)
+                        if pagehead:
+                           pagetitle = re.search(r'<title>(.*)<\/title>', pagehead)
+                           pagetitle = str(pagetitle.group(1))
+                           bigtitle = pagetitle.upper()
+                           titlestars = lambda a: '*' * (len(str(a)) + 4)
+                           pagestars = titlestars(pagetitle)
+                           print('\n\033[40m\033[33m%s\n\033[34;1m* %s * \n\033[40m\033[33;21m%s\n\033[0m' % (pagestars, bigtitle, pagestars)) 
+                     sb = bs.find_all('a', href = re.compile(r'.+$'))
+                     #sb = bs.findAll('a')
+                     sblen = len(sb)
+                     if sblen > 0:
+                        n = 0
+                        while n < sblen:
+                           for sbl in sb:
+                              if debug == 1:
+                                 print('\n\033[35;1mSBL LOOP\r\n\033[37;21m* n = %d, n < %d \033[0m\n' % (n, sblen))
+                              if sbl is not None:
+                                 sr = sbl.get('href').strip()
+                                 sr = str(sr)
+                                 print('\n* %s \n') % sr
+                                 if not re.search('http', sr[:4]):
+                                    parent = getparent(sx)
+                                    srs = sr.lstrip('/')
+                                    sr = parent + srs
+                                 if re.match(r'([^.]+\/)$', str(sr)):
+                                    followlinks(sr)
+                                    sdirs.append(sr)
+                                 else:
+                                    if '/' not in sr[-1:]:
+                                       getCF(sr, 0)
+                                       sdirs.append(sr)
+                                 n += 1
+                              else:
+                                 n += 1
+                                 continue
+
+                  elif 'Error-222' in bx:
+                     print('\nuh-oh. might have triggered a flag with cloudflare.\n')
+                     for i in xrange(10,0,-1):
+                        time.sleep(1)        
+                        print('delaying request for %d seconds.. \r' % i)
+                        sys.stdout.flush()
+                     break
                   else:
-                     sx = parent + sl
+                     if not re.search('http', str(sl[:4])):
+                        parent = getparent(bx)
+                        sl = sl.lstrip('/')
+                        sx = parent + sl
+                     else:
+                        sx = str(sl)
+
                   sx = str(sx)
                   sdirs.append(sx)
+                  print(sx)
+                  print('\n----------------------------------------------------------- \n')              
+                  getCF(sx, 0)
                si += 1
-                  #if re.search(r'^(.*)(\/)$', str(bx)):
+
+               #if re.search(r'^(.*)(\/)$', str(bx)):
             else:
+               print('\nno links found at %s \n' % str(slink))
                si += 1
                continue
+
       for sd in sdirs:
-         print('%s \n' % sd)
-         getCF(sd, links)
+         if '/' in sd[-1:]:
+            print('\nfollowing directory: %s \n' % sd)
+            followlinks(sd)
+            getCF(sd, 1)
+         else:
+            print('\nrequesting link: %s \n' % sd)
+            getCF(sd, 0)
       return sdirs
 
    if links == 1:
@@ -612,7 +768,8 @@ def getCF(cfurl, links):
             break
          elif follow.lower() == 'y':
             r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-            html = BeautifulSoup(r.text)
+            html = BeautifulSoup(r.text, "html.parser", from_encoding='utf-8')
+            
             findlinks = html.findAll('a')
             s = []
             checkfordirs = 0
@@ -620,10 +777,12 @@ def getCF(cfurl, links):
                for d in findlinks:
                   dd = d.get('href')
                   if re.search(r'^(.*)(\/)$', str(dd)):
-                     if not re.match(r'^((\.\.)?\/)$', str(dd)):
+                     if not re.match(r'^((\.\.)?\/)$', str(dd)) and dd not in cfurl:
+                        if 'http' not in dd[:4]:
+                           dd = parent + dd
                         s.append(str(dd))
                         checkfordirs = 1
-            
+
             if len(s) > 0 and checkfordirs == 1:
                if 'followdirs' not in locals():
                   followdirs = raw_input('follow directories? enter Y/N --> ')
@@ -638,9 +797,9 @@ def getCF(cfurl, links):
                      depth += 1
             else:
                followdirs = 'n'
-            
+
             if debug == 1:
-               print("\ndepth: %d \n" % depth)      
+               print("\n\033[35;1mdepth:\033[37;21m %d \033[0m\n" % depth)
             if findlinks:
                total = len(findlinks)
             else:
@@ -688,7 +847,7 @@ def getCF(cfurl, links):
                         b = link.get('href')
                         if b:
                            bx = parent + b
-                        
+
                            if not re.match(r'^((\.\.)?\/)$', str(b)):
                               getdirs = followlinks(bx)
                               while len(getdirs) > 0:
@@ -734,7 +893,7 @@ def getCF(cfurl, links):
                               droppath = p.path.split('/')[-1]
                               geturl = geturl.rstrip(droppath)
                            break
-                        
+
                      print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % geturl)
                      try:
                         getCF(geturl, links)
@@ -758,7 +917,7 @@ def getCF(cfurl, links):
                         depth -= 1
                         if debug == 1:
                            print("\ndepth: %d \n" % depth)
-         
+
                elif followdirs.lower() == 'y' and depth < 1:
                   for link in findlinks:
                      b = link.get('href')
@@ -788,7 +947,7 @@ def getCF(cfurl, links):
                      found = found - 1
                      if debug == 1:
                         print("\nfound: %d \n" % found)
-                  
+
                else:
                   for link in findlinks:
                      b = link.get('href')
@@ -823,7 +982,7 @@ def getCF(cfurl, links):
                   print("\nfound: %d \n" % found)
                keep = 0
                break
-         
+
          else:
             cpath = p.path.strip('/')
             cpaths = cpath.split('/')
@@ -836,10 +995,10 @@ def getCF(cfurl, links):
                keep = 0
                print("\nfinished following all links.\n")
             break
-            
+
       else:
          found = 0
-                     
+
          print("\nno more links to fetch at %s.\n" % cfurl)
          if debug == 1:
             print("\nfound: %d \n" % found)
@@ -858,7 +1017,7 @@ def getCF(cfurl, links):
          else:
             cfurl = cfurl.rstrip(lastpath)
             print('\ntrying %s.. \n' % cfurl)
-            
+
 try:
    getCF(cfurl, links)
 
@@ -893,7 +1052,7 @@ except SyntaxError, e:
    print("\na typo is a silly reason to force a program to terminate..\n")
    print("\nespecially this one:\n %s \n" % str(e))
    raise
-   
+
 except IOError, e:
    print("\na connection error has occurred: %s \n" % str(e))
    pass
@@ -930,5 +1089,5 @@ except Exception, e:
 
 finally:
    print("\nexiting..\n")
-   
+
 sys.exit(0)
