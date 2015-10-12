@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget v0.70
-# release date: October 2, 2015
+# cloudget v0.71
+# release date: October 12, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, codecs, subprocess, os, re, random, requests, string, time, traceback
@@ -22,7 +22,7 @@ except:
 intro = '''\n\033[40m\033[34m
 =============================================================\033[0m\033[40m\033[32m
 =============================================================\033[0m\033[40m\033[90;1m
----------------------- CLOUDGET v0.70 -----------------------\033[0m\033[40m\033[34;21m
+---------------------- CLOUDGET v0.71 -----------------------\033[0m\033[40m\033[34;21m
 =============================================================\033[0m\033[40m\033[32m
 =============================================================\033[0m\033[41m\033[33m
 ----------------------- author : vvn ------------------------\033[0m\033[41m\033[33m
@@ -74,7 +74,7 @@ parser.add_argument('-l', '--links', help='scrape content returned from server f
 parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', dest='curl', metavar='CURL_OPTS', help='use cURL. use %(metavar)s to pass optional cURL parameters. (for more info try \'curl --manual\')', required=False)
 parser.add_argument('-p', '--proxy', action='store', metavar='PROXY_SERVER:PORT', help='use a proxy to connect to remote server at [protocol]://[host]:[port] (example: -p http://localhost:8080) **only use HTTP or HTTPS protocols!', required=False)
 parser.add_argument('-d', '--debug', help='show detailed stack trace on exceptions', action='store_true', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s v0.70 by vvn <lost@nobody.ninja>, released october 2, 2015.')
+parser.add_argument('--version', action='version', version='%(prog)s v0.70 by vvn <lost@nobody.ninja>, released October 12, 2015.')
 
 args = parser.parse_args()
 if args.out:
@@ -246,14 +246,16 @@ def getCF(cfurl, links):
    def getpage(cfurl):      
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       if 'text' in r.headers.get('Content-Type'):
-         rt = UnicodeDammit.detwingle(r.text)
-         html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+         #rt = unicode(r.content.lstrip(codecs.BOM_UTF8), 'utf-8')
+         rt = UnicodeDammit.detwingle(r.content)
+         html = BeautifulSoup(rt, "html.parser")
          print('\r\n--------------------------------------------------------\r\n')
          if debug == 1:
             orenc = str(html.original_encoding)
             print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
          bs = html.prettify(formatter=None)
-         print(bs)
+         bsu = u''.join(bs).encode('utf-8').strip()
+         print(bsu)
          print('\r\n--------------------------------------------------------\r\n')
       else:
          found = -1
@@ -434,6 +436,8 @@ def getCF(cfurl, links):
       if not checkresume == '3': # IF NOT SKIPPING
          r = scraper.get(cfurl, stream=True, headers=resumeheader, verify=False, allow_redirects=True, proxies=proxystring)
          filesize = r.headers.get('Content-Length')
+         if checkresume == '1' and filesize is not None:
+            filesize = int(filesize) + int(resumesize)
          filetype = r.headers.get('Content-Type')
          start = time.clock()
          #today = datetime.now()
@@ -452,8 +456,8 @@ def getCF(cfurl, links):
                   if mbsize > 1 :
                      qt = 'mb'
                      size = mbsize
-               print('\nfile size: ' + str(size) + ' %s \n' % qt)
-               for chunk in r.iter_content(chunk_size=2048):
+               print('\nfile size: %d %s \n' % (size, qt))
+               for chunk in r.iter_content(chunk_size=4096):
                   if chunk:
                      dld += len(chunk)
                      dlfile.write(chunk)
@@ -468,7 +472,7 @@ def getCF(cfurl, links):
                         if dldmb > 1:
                            unit = 'mb   '
                            prog = str(round(dldmb,2))
-                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kb/s" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / (time.clock() - start))))
+                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kb/s\r" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / (time.clock() - start))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
                   else:
@@ -487,8 +491,12 @@ def getCF(cfurl, links):
                   else:
                      break
          print("\r\nfile %s saved! \n" % outfile)
-         fin = time.clock() - start
-         totalsecs = fin * 360
+         endclock = time.clock()
+         fin = endclock - start
+         totalsecs = fin
+         if debug == 1:
+            print("\n\033[34;1mSTART: \033[35;1m %s \033[0;21m\n" % str(start))
+            print("\n\033[34;1mEND: \033[35;1m %s \033[0;21m\n" % str(endclock))
          elapsed = "%s seconds " % str(totalsecs)
          if totalsecs > 60:
             totalmins = float(totalsecs / 60)
@@ -498,7 +506,7 @@ def getCF(cfurl, links):
             else:
                unitmin = "minutes"
             strmin = str(mins) + " " + str(unitmin)
-            secs = round((totalsecs % 60), 3)
+            secs = round((totalsecs % 60), 4)
             elapsed = str(strmin) + " " + str(secs)
             if totalmins > 60:
                totalhours = float(totalmins / 60 )
@@ -537,7 +545,7 @@ def getCF(cfurl, links):
    def getlinks(cfurl):
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       rt = UnicodeDammit.detwingle(r.text)
-      html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+      html = BeautifulSoup(rt, "html.parser")
       if debug == 1:
          orenc = str(html.original_encoding)
          print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
@@ -675,48 +683,53 @@ def getCF(cfurl, links):
                      getCF(sx, 0)
                      ss = scraper.get(sx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
                      bs = BeautifulSoup(ss.text, "html.parser")
-                     if bs is not None:                        
+                     if bs is not None:
                         if debug == 1:
                            orenc = str(bs.original_encoding)
                            print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
-                        pagehead = bs.html.head.contents
-                        pagehead = str(pagehead)
-                        if pagehead:
-                           pagetitle = re.search(r'<title>(.*)<\/title>', pagehead)
-                           pagetitle = str(pagetitle.group(1))
-                           bigtitle = pagetitle.upper()
-                           titlestars = lambda a: '*' * (len(str(a)) + 4)
-                           pagestars = titlestars(pagetitle)
-                           print('\n\033[40m\033[33m%s\n\033[34;1m* %s * \n\033[40m\033[33;21m%s\n\033[0m' % (pagestars, bigtitle, pagestars)) 
-                     sb = bs.find_all('a', href = re.compile(r'.+$'))
-                     #sb = bs.findAll('a')
-                     sblen = len(sb)
-                     if sblen > 0:
-                        n = 0
-                        while n < sblen:
-                           for sbl in sb:
-                              if debug == 1:
-                                 print('\n\033[35;1mSBL LOOP\r\n\033[37;21m* n = %d, n < %d \033[0m\n' % (n, sblen))
-                              if sbl is not None:
-                                 sr = sbl.get('href').strip()
-                                 sr = str(sr)
-                                 print('\n* %s \n') % sr
-                                 if not re.search('http', sr[:4]):
-                                    parent = getparent(sx)
-                                    srs = sr.lstrip('/')
-                                    sr = parent + srs
-                                 if re.match(r'([^.]+\/)$', str(sr)):
-                                    followlinks(sr)
-                                    sdirs.append(sr)
-                                 else:
-                                    if '/' not in sr[-1:]:
-                                       getCF(sr, 0)
+                        if bs.html is not None:
+                           pagehead = bs.html.head.contents
+                           pagehead = str(pagehead)
+                           if pagehead is not None and len(pagehead) > 7:
+                              pagetitle = re.search(r'<title>(.*)<\/title>', pagehead)
+                              pagetitle = str(pagetitle.group(1))
+                              bigtitle = pagetitle.upper()
+                              titlestars = lambda a: '*' * (len(str(a)) + 4)
+                              pagestars = titlestars(pagetitle)
+                              print('\n\033[40m\033[33m%s\n\033[34;1m* %s * \n\033[40m\033[33;21m%s\n\033[0m' % (pagestars, bigtitle, pagestars))
+                              
+                        sb = bs.find_all('a', href = re.compile(r'.+$'))
+                        #sb = bs.findAll('a')
+                        sblen = len(sb)
+                        if sblen > 0:
+                           n = 0
+                           while n < sblen:
+                              for sbl in sb:
+                                 if debug == 1:
+                                    print('\n\033[35;1mSBL LOOP\r\n\033[37;21m* n = %d, n < %d \033[0m\n' % (n, sblen))
+                                 if sbl is not None:
+                                    sr = sbl.get('href').strip()
+                                    sr = str(sr)
+                                    print('\n* %s \n') % sr
+                                    if not re.search('http', sr[:4]):
+                                       parent = getparent(sx)
+                                       srs = sr.lstrip('/')
+                                       sr = parent + srs
+                                    if re.match(r'([^.]+\/)$', str(sr)):
+                                       followlinks(sr)
                                        sdirs.append(sr)
-                                 n += 1
-                              else:
-                                 n += 1
-                                 continue
-
+                                    else:
+                                       if '/' not in sr[-1:]:
+                                          getCF(sr, 0)
+                                          sdirs.append(sr)
+                                    n += 1
+                                 else:
+                                    n += 1
+                                    continue
+                     else:
+                        n += 1
+                        continue
+                        
                   elif 'Error-222' in bx:
                      print('\nuh-oh. might have triggered a flag with cloudflare.\n')
                      for i in xrange(10,0,-1):
@@ -727,7 +740,8 @@ def getCF(cfurl, links):
                   else:
                      if not re.search('http', str(sl[:4])):
                         parent = getparent(bx)
-                        sl = sl.lstrip('/')
+                        if '/' in sl[:1]:
+                           sl = sl.lstrip('/')
                         sx = parent + sl
                      else:
                         sx = str(sl)
