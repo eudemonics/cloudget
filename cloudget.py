@@ -19,21 +19,38 @@ except:
       print('unable to install the cfscrape module via pip. this script requires cfscrape to run. get it here: https://github.com/Anorov/cloudflare-scrape')
       sys.exit(1)
 
-intro = '''\n\033[40m\033[34m
-=============================================================\033[0m\033[40m\033[32m
-=============================================================\033[0m\033[40m\033[90;1m
----------------------- CLOUDGET v0.71 -----------------------\033[0m\033[40m\033[34;21m
-=============================================================\033[0m\033[40m\033[32m
-=============================================================\033[0m\033[41m\033[33m
------------------------ author : vvn ------------------------\033[0m\033[41m\033[33m
---------------- lost [at] nobody [dot] ninja ----------------\033[0m\033[40m\033[37;1m
-=============================================================\033[0m\033[40m\033[35;21m
----------------- support my work: buy my EP! ----------------\033[0m\033[40m\033[36m
--------------------- http://dreamcorp.us --------------------\033[0m\033[40m\033[36m
---------------- facebook.com/dreamcorporation ---------------\033[0m\033[40m\033[31;1m
------------------- thanks for the support! ------------------\033[0m\033[40m\033[37;1m
-=============================================================\033[0;21m\033[0m
-\n'''
+intro = '''\n
+\033[40m\033[34m=============================================================\033[0m
+\033[40m\033[32m=============================================================\033[0m
+\033[40m\033[90;1m---------------------- CLOUDGET v0.71 -----------------------\033[0m
+\033[40m\033[34;21m=============================================================\033[0m
+\033[40m\033[32m=============================================================\033[0m
+\033[40m\033[35;1m----------------------- author : vvn ------------------------\033[0m
+\033[40m\033[35m--------------- lost [at] nobody [dot] ninja ----------------\033[0m
+\033[40m\033[34;1m=============================================================\033[0m
+\033[40m\033[37;21m---------------- support my work: buy my EP! ----------------\033[0m
+\033[40m\033[35m-------------------- http://dreamcorp.us --------------------\033[0m
+\033[40m\033[35m--------------- facebook.com/dreamcorporation ---------------\033[0m
+\033[40m\033[37;1m------------------ thanks for the support! ------------------\033[0m
+\033[40m\033[34;1m=============================================================\033[0m
+\033[21m\n'''
+
+if os.name == 'nt' or sys.platform == 'win32':
+   intro = '''\n
+   =============================================================
+   =============================================================
+   ---------------------- CLOUDGET v0.71 -----------------------
+   =============================================================
+   =============================================================
+   ----------------------- author : vvn ------------------------
+   --------------- lost [at] nobody [dot] ninja ----------------
+   =============================================================
+   ---------------- support my work: buy my EP! ----------------
+   -------------------- http://dreamcorp.us --------------------
+   --------------- facebook.com/dreamcorporation ---------------
+   ------------------ thanks for the support! ------------------
+   =============================================================
+   \n'''
 
 print(intro)
 
@@ -240,14 +257,25 @@ def getCF(cfurl, links):
       mnt = p.scheme + '://'
       sess.mount(mnt, cfscrape.CloudflareAdapter())
       sess.get(cfurl)
-      cookies = "\"cf_clearance\"=\"%s\";\"__cfduid\"=\"%s\"" % (sess.cookies["cf_clearance"] , sess.cookies["__cfduid"])
+      if sess.cookies:
+         b = sess.cookies
+         c = b.items()
+         for s, t in c:
+            cs = '\033[32;1m' + u''.join(s).encode('utf-8').strip() + '\033[0m'
+            ct = '\033[32;1m' + u''.join(t).encode('utf-8').strip() + '\033[0m'
+            print(str(cs))
+            print(str(ct))
+         cookies = "\"cf_clearance\"=\"%s\";\"__cfduid\"=\"%s\"" % (sess.cookies.get('cf_clearance') , sess.cookies.get('__cfduid'))
+         print(cookies)
+      else:
+         cookies = None
       return cookies
 
    def getpage(cfurl):      
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       if 'text' in r.headers.get('Content-Type'):
          #rt = unicode(r.content.lstrip(codecs.BOM_UTF8), 'utf-8')
-         rt = UnicodeDammit.detwingle(r.content)
+         rt = UnicodeDammit.detwingle(r.text)
          html = BeautifulSoup(rt, "html.parser")
          print('\r\n--------------------------------------------------------\r\n')
          if debug == 1:
@@ -330,33 +358,10 @@ def getCF(cfurl, links):
       result, errors = output.communicate()
       if result is not None:
          ht = BeautifulSoup(str(result))
-         cpass = ht.find('input', {'name': 'pass'})
-         if cpass:
-            cloudpass = cpass.get('value')
-            cloudsch = ht.find('input', {'name': 'jschl_vc'}).get('value')
-            reurl = ht.find('form').get('action')
-            if reurl:
-               print("form action: %s \n" % reurl)
-            if '/' in path[:1]:
-               path = path[1:]
-            parent = p.scheme + '://' + p.netloc + path
-            submitstr = 'pass=' + cloudpass + '&jschl_vc=' + cloudsch + '&challenge-form=submit'
-            #locstr = 'Location: http://' + p.netloc + path + '?' + submitstr
-            #header = '-H \'' + locstr + '\' -L ' + cfurl
-            go = parent + reurl
-            cs = '-e ' + p.netloc + ' --data-urlencode \'' + submitstr + '\' ' + curlstring
-            if writeout == 0:
-               cs = cs + '-v '
-            else:
-               cs = '--ignore-content-length ' + curlstring
-               #command = 'cd download && { curl ' + cs + cfurl + ' ; cd -; }'
-         else:
-            cs = curlstring + '-e ' + p.netloc + ' '
-            if writeout == 0:
-               cs += '-v '
-               #command = 'cd download && { curl ' + cs + cfurl + ' ; cd -; }'
          if re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$',cfurl) or re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$', outfile):
-            print(ht.prettify(formatter=None))
+            htpr = ht.prettify(formatter=None)
+            htpr = u''.join(htpr).encode('utf-8').strip()
+            print(htpr)
       else:
          if errors:
             print("\nerror: %s\n" % str(errors))
@@ -370,7 +375,7 @@ def getCF(cfurl, links):
       print("submitting cURL request:\n%s \n" % command)
       output = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
       response, errors = output.communicate()
-      res = BeautifulSoup(str(response))
+      res = BeautifulSoup(u''.join(response).encode('utf-8').strip())
       res = res.prettify()
       if response:
          print("\nresponse: \n %s \n" % str(res))
@@ -696,10 +701,9 @@ def getCF(cfurl, links):
                               bigtitle = pagetitle.upper()
                               titlestars = lambda a: '*' * (len(str(a)) + 4)
                               pagestars = titlestars(pagetitle)
-                              print('\n\033[40m\033[33m%s\n\033[34;1m* %s * \n\033[40m\033[33;21m%s\n\033[0m' % (pagestars, bigtitle, pagestars))
+                              print('\n\033[40m\033[33m%s\033[0m\n\033[34;1m* %s *\033[0m \n\033[40m\033[33;21m%s\033[0m\n' % (pagestars, bigtitle, pagestars))
                               
                         sb = bs.find_all('a', href = re.compile(r'.+$'))
-                        #sb = bs.findAll('a')
                         sblen = len(sb)
                         if sblen > 0:
                            n = 0
