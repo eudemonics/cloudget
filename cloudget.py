@@ -263,7 +263,7 @@ def getCF(cfurl, links):
       sess.mount(mnt, cfscrape.CloudflareAdapter())
       sess.get(cfurl)
       #sess.cookies
-      #l = sess.get(cfurl)
+      l = sess.get(cfurl)
       b = sess.cookies
       if b:
          c = b.items()
@@ -329,7 +329,7 @@ def getCF(cfurl, links):
             req += "User-Agent: %s\r\n" % ua
             houtput = check_output(["curl", "-A", ua, "i", "-s", cfurl])
       
-      print('\n\033[34;1msubmitting headers:\n\033[37;21m\%s \033[0m\n' % req)
+      print('\n\033[34;1msubmitting headers:\n\033[21m\033[37m%s \033[0m\n' % req)
       print("\nRESPONSE: \n%s \n" % str(houtput))
       msg = "\nfetching %s using cURL.. \n" % cfurl
       if writeout == 1:
@@ -373,33 +373,13 @@ def getCF(cfurl, links):
          if writeout == 1 and not re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$',outfile):
             print('\nsaved file: %s \n' % outfile)
          else:
-            ht = BeautifulSoup(str(result), "html.parser")
+            ht = BeautifulSoup(r.content, "html.parser")
             htpr = ht.prettify(formatter=None)
             htpr = u''.join(htpr).encode('utf-8').strip()
             print(htpr)
       else:
          if errors:
             print("\nerror: %s\n" % str(errors))
-         cs = curlstring + ' -i '
-         if writeout == 0:
-            cs += '-v --no-keepalive '
-         else:
-            cs = '--ignore-content-length ' + cs
-            #command = 'cd download && { curl ' + cs + cfurl + ' ; cd -; }'
-         command = 'curl ' + cs + '-s ' + cfurl
-         print("retrying cURL request:\n%s \n" % command)
-         output = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-         response, errors = output.communicate()
-         if response:
-            if writeout == 1 and not re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$', outfile):
-               print('\nsaved file: %s \n' % outfile)
-            else:
-               res = BeautifulSoup(u''.join(response).encode('utf-8').strip(), "html.parser")
-               res = res.prettify(formatter=None)
-               res = u''.join(res).encode('utf-8').strip()
-               print('\nresponse: %s \n' % res)
-         if errors:
-            print("\nerrors: \n %s \n" % str(errors))
       finished.append(cfurl)
 
    elif usecurl == 0 and writeout == 1:
