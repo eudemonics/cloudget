@@ -1,7 +1,7 @@
-# cloudget 0.666
+# cloudget 0.72
 #### by vvn [ lost @ nobody . ninja ]
 
- python script to bypass cloudflare from command line. built upon cfscrape module.
+ python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module.
 
 **REQUIRES CFSCRAPE AND BEAUTIFULSOUP MODULES TO RUN**
 
@@ -43,7 +43,7 @@ OPTIONAL - connect through HTTP/HTTPS proxy server at http(s)://[host]:[port]
 (example: --proxy http://localhost:8080)
 
 **-d | --debug:**
-OPTIONAL - turn verbose errors on for debugging
+OPTIONAL - turn verbose errors on for debugging, show detailed script info
 
 **-h | --help:**
 HELP - show options and exit
