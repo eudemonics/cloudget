@@ -383,8 +383,9 @@ def getCF(cfurl, links):
       finished.append(cfurl)
 
    elif usecurl == 0 and writeout == 1:
-      getkb = lambda a: round(float(float(a)/1024),2)
-      getmb = lambda b: round(float(float(b)/1048576),2)
+      getkb = lambda a: round(float(float(a)/1000),2)
+      getmb = lambda b: round(float(float(b)/1000000),2)
+      getsecs = lambda s: int(time.mktime(s.timetuple()))
       print("\ngetting %s... \n" % cfurl)
       if os.path.exists(savefile): # FOUND SAVED FILE
          # GET SIZE OF EXISTING LOCAL FILE
@@ -443,7 +444,7 @@ def getCF(cfurl, links):
          if checkresume == '1' and filesize is not None:
             filesize = int(filesize) + int(resumesize)
          filetype = r.headers.get('Content-Type')
-         start = time.clock()
+         start = getsecs(datetime.now())
          #today = datetime.now()
          #startdate = date.strftime(today,"%m-%d-%Y %H:%M:%S ")
          #print("start time: %s \n" % startdate)
@@ -468,7 +469,7 @@ def getCF(cfurl, links):
                      done = int((50 * int(dld)) / int(filesize))
                      dldkb = getkb(dld)
                      dldmb = getmb(dld)
-                     unit = 'b'
+                     unit = 'b   '
                      prog = str(round(dld,2))
                      if dldkb > 1:
                         unit = 'kb   '
@@ -476,7 +477,7 @@ def getCF(cfurl, links):
                         if dldmb > 1:
                            unit = 'mb   '
                            prog = str(round(dldmb,2))
-                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kb/s\r" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / (time.clock() - start))))
+                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kbps\r" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / ((getsecs(datetime.now()) - start) + 1))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
                   else:
@@ -495,7 +496,7 @@ def getCF(cfurl, links):
                   else:
                      break
          print("\r\nfile %s saved! \n" % outfile)
-         endclock = time.clock()
+         endclock = getsecs(datetime.now())
          fin = endclock - start
          totalsecs = fin
          if debug == 1:
