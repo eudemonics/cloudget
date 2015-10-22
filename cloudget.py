@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # cloudget v0.71
-# release date: October 12, 2015
+# release date: October 16, 2015
 # author: vvn < lost @ nobody . ninja >
 
 import sys, argparse, codecs, subprocess, os, re, random, requests, string, time, traceback
@@ -179,8 +179,11 @@ def getCF(cfurl, links):
       print('\nABORTING: already retrieved %s!\n') % firsturl
       sys.exit(1)
 
+   global outfile
+   outfile = cfurl.split('?')[0]
+   outfile = outfile.split('/')[-1]
+
    if writeout == 1:
-      global outfile
       global existing
       global checkresume
       p = urlparse(cfurl)
@@ -188,8 +191,6 @@ def getCF(cfurl, links):
          os.makedirs('download')
       if not os.path.exists(domaindir):
          os.makedirs(domaindir)
-      outfile = cfurl.split('?')[0]
-      outfile = outfile.split('/')[-1]
       filename = cfurl.lstrip('https:').strip('/')
       filename = filename.rstrip(outfile)
       dirs = filename.split('/')
@@ -220,6 +221,10 @@ def getCF(cfurl, links):
       cwd = os.getcwd()
       fullsavefile = os.path.join(cwd, savefile)
       print("full path to output file: %s \n" % fullsavefile)
+      
+   else:
+      if len(outfile) < 1 or outfile in p.netloc:
+         outfile = 'index.html'
 
    scraper = cfscrape.create_scraper()
    ualist = [
@@ -257,16 +262,19 @@ def getCF(cfurl, links):
       mnt = p.scheme + '://'
       sess.mount(mnt, cfscrape.CloudflareAdapter())
       sess.get(cfurl)
-      if sess.cookies:
-         b = sess.cookies
+      #sess.cookies
+      #l = sess.get(cfurl)
+      b = sess.cookies
+      if b:
          c = b.items()
          for s, t in c:
-            cs = '\033[32;1m' + u''.join(s).encode('utf-8').strip() + '\033[0m'
-            ct = '\033[32;1m' + u''.join(t).encode('utf-8').strip() + '\033[0m'
-            print(str(cs))
-            print(str(ct))
-         cookies = "\"cf_clearance\"=\"%s\";\"__cfduid\"=\"%s\"" % (sess.cookies.get('cf_clearance') , sess.cookies.get('__cfduid'))
-         print(cookies)
+            cs = u''.join(s).encode('utf-8').strip()
+            ct = u''.join(t).encode('utf-8').strip()
+            print('\033[34;1m' + str(cs) + '\033[0m')
+            print('\033[32;1m' + str(ct) + '\033[0m')
+         cookies = "\"cf_clearance\"=\"%s\"" % sess.cookies.get('cf_clearance')
+         if sess.cookies.get('__cfduid'):
+            cookies = cookies + ";\"__cfduid\"=\"%s\"" % sess.cookies.get('__cfduid')
       else:
          cookies = None
       return cookies
@@ -275,8 +283,8 @@ def getCF(cfurl, links):
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       if 'text' in r.headers.get('Content-Type'):
          #rt = unicode(r.content.lstrip(codecs.BOM_UTF8), 'utf-8')
-         rt = UnicodeDammit.detwingle(r.text)
-         html = BeautifulSoup(rt, "html.parser")
+         #rt = UnicodeDammit.detwingle(r.text)
+         html = BeautifulSoup(r.text, "html.parser")
          print('\r\n--------------------------------------------------------\r\n')
          if debug == 1:
             orenc = str(html.original_encoding)
@@ -298,26 +306,31 @@ def getCF(cfurl, links):
       print("status: ")
       print(r.status_code)
       print("\ngetting cookies for %s.. \n" % cfurl)
+      req = "GET / HTTP/1.1\r\n"
       cookie_arg = cfcookie(cfurl)
       if cookie_arg:
-         req = "GET / HTTP/1.1\r\n"
          req += "Cookie: %s\r\nUser-Agent: %s\r\n" % (cookie_arg, ua)
-         houtput = check_output(["curl", "--cookie", cookie_arg, "-A", ua])
-         curlstring = '--cookie \'' + cookie_arg + '\' -A \'' + ua + '\' -L -k '
+         houtput = check_output(["curl", "--cookie", cookie_arg, "-A", ua, "-s", cfurl])
+         curlstring = '--cookie \'' + cookie_arg + '\' -A \'' + ua + '\' -k '
          if 'curlopts' in locals():
             curlstring = '--cookie \'' + cookie_arg + '\' ' + curlopts + ' -A \'' + ua + '\' -k '
       else:
          cookie_arg = cfscrape.get_cookie_string(cfurl)
-         req = "GET / HTTP/1.1\r\n"
-         req += "User-Agent: %s\r\n" % ua
-         houtput = check_output(["curl", "-A", ua])
-         curlstring = '-A \'' + ua + '\' -L -k '
+         curlstring = '-A \'' + ua + '\' -k '
          if 'curlopts' in locals():
             curlstring = '-# ' + curlopts + ' -A \'' + ua + '\' -k '
-      if proxy:
-         curlstring += '-x %s ' % proxy
-      print(reqd)
-      print("\nHEADERS: \n%s \n" % str(houtput))
+         if proxy:
+            curlstring += '-x %s ' % proxy
+         if cookie_arg:
+            curlstring += '--cookie \'' + cookie_arg + '\' '
+            req += "Cookie: %s\r\nUser-Agent: %s\r\n" % (cookie_arg, ua)
+            houtput = check_output(["curl", "-A", ua, "--cookie", cookie_arg, "-s", cfurl])
+         else:
+            req += "User-Agent: %s\r\n" % ua
+            houtput = check_output(["curl", "-A", ua, "i", "-s", cfurl])
+      
+      print('\n\033[34;1msubmitting headers:\n\033[37;21m\%s \033[0m\n' % req)
+      print("\nRESPONSE: \n%s \n" % str(houtput))
       msg = "\nfetching %s using cURL.. \n" % cfurl
       if writeout == 1:
          if os.path.exists(savefile):
@@ -351,14 +364,16 @@ def getCF(cfurl, links):
          #command_text = 'cd download && { curl ' + curlstring + cfurl + ' ; cd -; }'
       else:
          msg = "\nfetching %s using cURL.. \n" % cfurl
-      command_text = 'curl ' + curlstring + cfurl
+      command_text = 'curl ' + curlstring + '-s ' + cfurl
       print(msg)
       print("\nsubmitting cURL command string: \n%s \n" % command_text)
       output = Popen(command_text, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
       result, errors = output.communicate()
       if result is not None:
-         ht = BeautifulSoup(str(result))
-         if re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$',cfurl) or re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$', outfile):
+         if writeout == 1 and not re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$',outfile):
+            print('\nsaved file: %s \n' % outfile)
+         else:
+            ht = BeautifulSoup(str(result), "html.parser")
             htpr = ht.prettify(formatter=None)
             htpr = u''.join(htpr).encode('utf-8').strip()
             print(htpr)
@@ -371,16 +386,20 @@ def getCF(cfurl, links):
          else:
             cs = '--ignore-content-length ' + cs
             #command = 'cd download && { curl ' + cs + cfurl + ' ; cd -; }'
-      command = 'curl ' + cs + cfurl
-      print("submitting cURL request:\n%s \n" % command)
-      output = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-      response, errors = output.communicate()
-      res = BeautifulSoup(u''.join(response).encode('utf-8').strip())
-      res = res.prettify()
-      if response:
-         print("\nresponse: \n %s \n" % str(res))
-      if errors:
-         print("\nerrors: \n %s \n" % str(errors))
+         command = 'curl ' + cs + '-s ' + cfurl
+         print("retrying cURL request:\n%s \n" % command)
+         output = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+         response, errors = output.communicate()
+         if response:
+            if writeout == 1 and not re.search(r'(\.(htm)l?|\.php|\.txt|\.xml|\.[aj](sp)x?|\.cfm|\.do|\.md|\.json)$', outfile):
+               print('\nsaved file: %s \n' % outfile)
+            else:
+               res = BeautifulSoup(u''.join(response).encode('utf-8').strip(), "html.parser")
+               res = res.prettify(formatter=None)
+               res = u''.join(res).encode('utf-8').strip()
+               print('\nresponse: %s \n' % res)
+         if errors:
+            print("\nerrors: \n %s \n" % str(errors))
       finished.append(cfurl)
 
    elif usecurl == 0 and writeout == 1:
@@ -549,8 +568,7 @@ def getCF(cfurl, links):
 
    def getlinks(cfurl):
       r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      rt = UnicodeDammit.detwingle(r.text)
-      html = BeautifulSoup(rt, "html.parser")
+      html = BeautifulSoup(r.text, "html.parser")
       if debug == 1:
          orenc = str(html.original_encoding)
          print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
@@ -573,8 +591,7 @@ def getCF(cfurl, links):
 
    def selectdir(geturl):
       r = scraper.get(geturl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-      rt = UnicodeDammit.detwingle(r.text)
-      html = BeautifulSoup(rt.decode('utf-8'), "html.parser")
+      html = BeautifulSoup(r.text, "html.parser")
       if debug == 1:
          orenc = str(html.original_encoding)
          print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
@@ -660,8 +677,7 @@ def getCF(cfurl, links):
       print('\n----------------------------------------------------------- \n')
       print(s)
       print('\n')
-      scr = UnicodeDammit.detwingle(s.text)
-      shtml = BeautifulSoup(scr, "html.parser")
+      shtml = BeautifulSoup(s.text, "html.parser")
       if debug == 1:
          orenc = str(shtml.original_encoding)
          print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
@@ -687,15 +703,15 @@ def getCF(cfurl, links):
                      print(sx)
                      getCF(sx, 0)
                      ss = scraper.get(sx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-                     bs = BeautifulSoup(ss.text, "html.parser")
-                     if bs is not None:
+                     bb = BeautifulSoup(ss.text, "html.parser")
+                     if bb is not None:
                         if debug == 1:
-                           orenc = str(bs.original_encoding)
+                           orenc = str(bb.original_encoding)
                            print('\n\033[40m\033[35;1mORIGINAL ENCODING: %s \033[0m\n' % orenc)
-                        if bs.html is not None:
-                           pagehead = bs.html.head.contents
-                           pagehead = str(pagehead)
-                           if pagehead is not None and len(pagehead) > 7:
+                        if bb.html is not None:
+                           pagehead = bb.html.head.contents
+                           if pagehead is not None and len(pagehead) > 1:
+                              pagehead = u''.join(pagehead).encode('utf-8').strip()
                               pagetitle = re.search(r'<title>(.*)<\/title>', pagehead)
                               pagetitle = str(pagetitle.group(1))
                               bigtitle = pagetitle.upper()
@@ -703,7 +719,7 @@ def getCF(cfurl, links):
                               pagestars = titlestars(pagetitle)
                               print('\n\033[40m\033[33m%s\033[0m\n\033[34;1m* %s *\033[0m \n\033[40m\033[33;21m%s\033[0m\n' % (pagestars, bigtitle, pagestars))
                               
-                        sb = bs.find_all('a', href = re.compile(r'.+$'))
+                        sb = bb.find_all('a', href = re.compile(r'.+$'))
                         sblen = len(sb)
                         if sblen > 0:
                            n = 0
@@ -787,7 +803,6 @@ def getCF(cfurl, links):
          elif follow.lower() == 'y':
             r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
             html = BeautifulSoup(r.text, "html.parser", from_encoding='utf-8')
-            
             findlinks = html.findAll('a')
             s = []
             checkfordirs = 0
@@ -1105,7 +1120,5 @@ except Exception, e:
       print(traceback_template % traceback_details)
    sys.exit(1)
 
-finally:
-   print("\nexiting..\n")
-
+print("\nexiting..\n")
 sys.exit(0)
