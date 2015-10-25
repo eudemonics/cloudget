@@ -385,7 +385,7 @@ def getCF(cfurl, links):
    elif usecurl == 0 and writeout == 1:
       getkb = lambda a: round(float(float(a)/1000),2)
       getmb = lambda b: round(float(float(b)/1000000),2)
-      getsecs = lambda s: int(time.mktime(s.timetuple()))
+      getsecs = lambda s: round(float(time.mktime(s.timetuple())),2)
       print("\ngetting %s... \n" % cfurl)
       if os.path.exists(savefile): # FOUND SAVED FILE
          # GET SIZE OF EXISTING LOCAL FILE
@@ -422,7 +422,6 @@ def getCF(cfurl, links):
          elif checkresume == '2': # DISREGARD SAVED FILE, START DOWNLOAD FROM TOP
             resumeheader = None
             dlmsg = "\nwriting content to \'download\' directory as file %s. this may take awhile depending on file size... \n" % outfile
-            dld = 0
             df = open(savefile, 'wb+')
          else: # SKIPPING DOWNLOAD
             resumeheader = None
@@ -445,6 +444,7 @@ def getCF(cfurl, links):
             filesize = int(filesize) + int(resumesize)
          filetype = r.headers.get('Content-Type')
          start = getsecs(datetime.now())
+         time.sleep(1)
          #today = datetime.now()
          #startdate = date.strftime(today,"%m-%d-%Y %H:%M:%S ")
          #print("start time: %s \n" % startdate)
@@ -462,7 +462,7 @@ def getCF(cfurl, links):
                      qt = 'mb'
                      size = mbsize
                print('\nfile size: %d %s \n' % (size, qt))
-               for chunk in r.iter_content(chunk_size=4096):
+               for chunk in r.iter_content(chunk_size=2048):
                   if chunk:
                      dld += len(chunk)
                      dlfile.write(chunk)
@@ -477,7 +477,7 @@ def getCF(cfurl, links):
                         if dldmb > 1:
                            unit = 'mb   '
                            prog = str(round(dldmb,2))
-                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kbps\r" % (prog, unit, '#' * done, ' ' * (50 - done), 0.128 * (dldkb / ((getsecs(datetime.now()) - start) + 1))))
+                     sys.stdout.write("\rdownloaded: %s %s   [%s%s] %d kbps    \r" % (prog, unit, '#' * done, ' ' * (50 - done), 0.001 * (dld / ((getsecs(datetime.now()) - start) + 0.1))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
                   else:
@@ -512,7 +512,7 @@ def getCF(cfurl, links):
                unitmin = "minutes"
             strmin = str(mins) + " " + str(unitmin)
             secs = round((totalsecs % 60), 4)
-            elapsed = str(strmin) + " " + str(secs)
+            elapsed = str(strmin) + " " + str(secs) + " seconds"
             if totalmins > 60:
                totalhours = float(totalmins / 60 )
                hours = int(totalmins / 60)
@@ -534,7 +534,7 @@ def getCF(cfurl, links):
          #enddate = date.strftime(ended,"%m-%d-%Y %H:%M:%S ")
          #print("end time: %s \n" % enddate)
          print("\ndownload time elapsed: %s \n" % str(elapsed))
-         time.sleep(4)
+         time.sleep(2)
          print('\r\n--------------------------------------------------------\r\n')
 
       else:
@@ -567,7 +567,7 @@ def getCF(cfurl, links):
       else:
          print('\nNO LINKS FOUND.\n')
          foundlinks = 0
-      time.sleep(4)
+      time.sleep(3)
       return foundlinks
 
    def selectdir(geturl):
@@ -783,7 +783,7 @@ def getCF(cfurl, links):
             break
          elif follow.lower() == 'y':
             r = scraper.get(cfurl, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
-            html = BeautifulSoup(r.text, "html.parser", from_encoding='utf-8')
+            html = BeautifulSoup(r.text, "html.parser")
             findlinks = html.findAll('a')
             s = []
             checkfordirs = 0
@@ -833,11 +833,16 @@ def getCF(cfurl, links):
                               getCF(b, links)
                            except KeyboardInterrupt:
                               try:
-                                 print("\r\nskipping %s... press CTRL + C again to quit.\n" % b)
+                                 print("\r\nskipping %s... \r\npress CTRL + C again to quit.\n" % b)
+                                 time.sleep(2)
                                  continue
                               except KeyboardInterrupt:
-                                 print("\nrequest cancelled.\n")
+                                 print("\r\nrequest aborted by user.\n")
+                                 keep = 0
                                  break
+                              except Exception, e:
+                                 print("\r\nan exception has occurred: %s \n" % str(e))
+                                 raise
                            except (KeyboardInterrupt, SystemExit):
                               print("\r\nrequest cancelled by user\n")
                               keep = 0
@@ -874,13 +879,18 @@ def getCF(cfurl, links):
                                     print("\nfound: %d \n" % found)
                               except KeyboardInterrupt:
                                  try:
-                                    print("\r\nskipping %s... press CTRL + C again to quit.\n" % bx)
+                                    print("\r\nskipping %s...\n press CTRL + C again to quit.\n" % bx)
+                                    time.sleep(2)
                                     continue
                                  except KeyboardInterrupt:
-                                    print("\nrequest cancelled.\n")
-                                    sys.exit()
+                                    print("\r\nrequest aborted by user.\n")
+                                    break
+                                 except Exception, e:
+                                    print("\r\nan exception has occurred: %s \n" % str(e))
+                                    raise
+                                    sys.exit(1)
                               except (KeyboardInterrupt, SystemExit):
-                                 print("\r\nrequest cancelled by user\n")
+                                 sys.exit("\r\nrequest cancelled by user.\n")
                                  break
                               except Exception, e:
                                  print("\r\nan exception has occurred: %s \n" % str(e))
@@ -914,11 +924,17 @@ def getCF(cfurl, links):
                         found = found - 1
                      except KeyboardInterrupt:
                         try:
-                           print("\r\nskipping %s... press CTRL + C again to quit.\n" % geturl)
+                           print("\r\nskipping %s... \npress CTRL + C again to quit.\n" % geturl)
+                           time.sleep(2)
                            continue
                         except KeyboardInterrupt:
-                           print("\nrequest cancelled.\n")
+                           print("\r\nrequest aborted by user.\n")
+                           keep = 0
                            break
+                        except Exception, e:
+                           print("\r\nan exception has occurred: %s \n" % str(e))
+                           raise
+                           sys.exit(1)
                      except (KeyboardInterrupt, SystemExit):
                         print("\r\nrequest cancelled by user\n")
                         keep = 0
@@ -943,10 +959,15 @@ def getCF(cfurl, links):
                         except KeyboardInterrupt:
                            try:
                               print("\r\nskipping %s... press CTRL + C again to quit.\n" % bx)
+                              time.sleep(2)
                               continue
                            except KeyboardInterrupt:
-                              print("\nrequest cancelled.\n")
+                              print("\nprogram aborted by user.\n")
                               break
+                           except Exception, e:
+                              print("\r\nan exception has occurred: %s \n" % str(e))
+                              raise
+                              sys.exit(1)
                         except (KeyboardInterrupt, SystemExit):
                            print("\r\nrequest cancelled by user\n")
                            break
@@ -976,9 +997,15 @@ def getCF(cfurl, links):
                               getCF(b, links)
                            except KeyboardInterrupt:
                               print("\r\nskipping %s...\n" % b)
-                              continue
+                              try:
+                                 print("\r\npress CTRL + C again to exit.\r\n")
+                                 time.sleep(2)
+                                 continue
+                              except KeyboardInterrupt:
+                                 print("\r\nprogram aborted by user.\n")
+                                 break
                            except (KeyboardInterrupt, SystemExit):
-                              print("\r\nrequest cancelled by user\n")
+                              sys.exit("\r\nrequest cancelled by user.\n")
                               break
                            except Exception, e:
                               print("\r\nan exception has occurred: %s \n" % str(e))
@@ -990,7 +1017,7 @@ def getCF(cfurl, links):
                      print("\nfound: %d \n" % found)
                   links = 1
             else:
-               print("\ndid not find any links\n")
+               print("\ndid not find any links.\n")
                found = found - 1
                if debug == 1:
                   print("\nfound: %d \n" % found)
@@ -1039,14 +1066,18 @@ except (KeyboardInterrupt, SystemExit):
    print("\r\nrequest cancelled by user\n")
    print("\r\nhit CTRL + C again to exit program, or it will automatically continue in 10 seconds.\n")
    try:
-      time.sleep(10)
-      getCF(cfurl, links)
+      for i in xrange(10,0,-1):
+         time.sleep(1)
+         sys.stdout.write("\r%s..\r" % str(i))
+         sys.stdout.flush()
    except KeyboardInterrupt:
-      sys.exit("\nrequest cancelled by user.\n")
+      sys.exit("\r\nrequest aborted by user.\n")
+   except (KeyboardInterrupt, SystemExit):
+      sys.exit("\r\nrequest cancelled by user.\n")
    except Exception, exc:
       print("\nan error has occurred: %s \n" % str(exc))
       sys.exit("unable to continue. check the URL and try again.\n")
-
+      raise
 except requests.exceptions.ConnectionError, e:
    print("\na connection error occurred: %s \n" % str(e))
    pass
