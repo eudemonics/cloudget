@@ -208,6 +208,10 @@ def getCF(cfurl, links):
       if len(outfile) < 1 or outfile in p.netloc:
          outfile = 'index.html'
          outdir = filename.strip()
+      elif '.' not in outfile:
+         part = outfile
+         outfile = outfile + '.html'
+         outdir = filename.rstrip(part)
       else:
          part = outfile
          outdir = filename.rstrip(part)
@@ -561,7 +565,7 @@ def getCF(cfurl, links):
          for link in linkresult:
             b = link.get('href')
             b = str(b)
-            if b not in cfurl and not re.match(r'^(\.\.)?\/$', b):
+            if b not in cfurl and not re.match(r'^(\.\.)?\/$', b) and '#' not in str(b):
                print(b)
          print('')
       else:
@@ -580,7 +584,7 @@ def getCF(cfurl, links):
       dirlist = []
       for link in findlinks:
          b = link.get('href')
-         if not re.match(r'^((\.\.)?\/)$', str(b)):
+         if not re.match(r'^((\.\.)?\/)$', str(b)) and '#' not in str(b):
             if re.search(r'^(.*)(\/)$', str(b)):
                dirlist.append(b)
 
@@ -674,7 +678,7 @@ def getCF(cfurl, links):
             sl = slink.get('href')
             si += 1
             if sl:
-               if not re.search(r'^((\.\.)?\/)$', str(sl)):
+               if not re.search(r'^((\.\.)?\/)$', str(sl)) and '#' not in str(sl):
                   if '/' in bx[-1:]:
                      if 'http' not in sl[:4]:
                         sl = sl.lstrip('/')
@@ -720,7 +724,7 @@ def getCF(cfurl, links):
                                        followlinks(sr)
                                        sdirs.append(sr)
                                     else:
-                                       if '/' not in sr[-1:]:
+                                       if '/' not in sr[-1:] and '#' not in sr:
                                           getCF(sr, 0)
                                           sdirs.append(sr)
                                     n += 1
@@ -791,7 +795,7 @@ def getCF(cfurl, links):
                for d in findlinks:
                   dd = d.get('href')
                   if re.search(r'^(.*)(\/)$', str(dd)):
-                     if not re.match(r'^((\.\.)?\/)$', str(dd)) and dd not in cfurl:
+                     if not re.match(r'^((\.\.)?\/)$', str(dd)) and dd not in cfurl and '#' not in str(dd):
                         if 'http' not in dd[:4]:
                            dd = parent + dd
                         s.append(str(dd))
@@ -826,7 +830,7 @@ def getCF(cfurl, links):
                   for link in findlinks:
                      b = link.get('href')
                      if b:
-                        if not re.search(r'^(.*)(\/)$', str(b)):
+                        if not re.search(r'^(.*)(\/)$', str(b)) and '#' not in str(b):
                            b = parent + b
                            print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % b)
                            try:
@@ -867,7 +871,7 @@ def getCF(cfurl, links):
                         if b:
                            bx = parent + b
 
-                           if not re.match(r'^((\.\.)?\/)$', str(b)):
+                           if not re.match(r'^((\.\.)?\/)$', str(b)) and '#' not in str(b):
                               getdirs = followlinks(bx)
                               while len(getdirs) > 0:
                                  for sd in getdirs:
