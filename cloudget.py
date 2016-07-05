@@ -870,8 +870,7 @@ def getCF(cfurl, links):
                b = str(b)
                if b not in cfurl and not re.match(r'^(\.\.)?\/$', b) and '#' not in b and 'javascript' not in str(b):
                   print(b)
-            print('')
-            break
+            print('\n')
          else:
             print('\nNO LINKS FOUND.\n')
             foundlinks = 0
