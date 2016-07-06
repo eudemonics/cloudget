@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget v0.74
-# release date: July 4, 2016
+# cloudget v0.75
+# release date: July 6, 2016
 # author: vvn < root @ nobody . ninja >
 #####
 ##### USER LICENSE AGREEMENT & DISCLAIMER
@@ -43,7 +43,7 @@ except:
 intro = '''\n
 \033[40m\033[34m=============================================================\033[0m
 \033[40m\033[32m=============================================================\033[0m
-\033[40m\033[90;1m---------------------- CLOUDGET v0.74 -----------------------\033[0m
+\033[40m\033[90;1m---------------------- CLOUDGET v0.75 -----------------------\033[0m
 \033[40m\033[34;21m=============================================================\033[0m
 \033[40m\033[32m=============================================================\033[0m
 \033[40m\033[35;1m----------------------- author : vvn ------------------------\033[0m
@@ -60,7 +60,7 @@ if os.name == 'nt' or sys.platform == 'win32':
    intro = '''\n
    =============================================================
    =============================================================
-   ---------------------- CLOUDGET v0.74 -----------------------
+   ---------------------- CLOUDGET v0.75 -----------------------
    =============================================================
    =============================================================
    ----------------------- author : vvn ------------------------
@@ -97,6 +97,7 @@ global finished
 global firsturl
 global img
 global imgdone
+global outpath
 usecurl = 0
 writeout = 0
 depth = 0
@@ -106,22 +107,27 @@ depth = 0
 links = 0
 img = 0
 imgdone = 0
+outpath = 'download'
 finished = []
 
 parser = argparse.ArgumentParser(description="a script to automatically bypass anti-robot measures and download links from servers behind a cloudflare proxy")
 
 parser.add_argument('-u', '--url', action='store', help='[**REQUIRED**] full cloudflare URL to retrieve, beginning with http(s)://', required=True)
-parser.add_argument('-o', '--out', help='save returned content to \'download\' subdirectory', action='store_true', required=False)
+parser.add_argument('-o', '--out', help='save returned content to local disk', action='store_true', required=False)
+parser.add_argument('-s', '--save_path', help='alternate path on local disk to store downloaded content. by default, it will be saved to the \'download\' directory.', action='store', required=False)
 parser.add_argument('-l', '--links', help='scrape content returned from server for links', action='store_true', required=False)
 parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', dest='curl', metavar='CURL_OPTS', help='use cURL. use %(metavar)s to pass optional cURL parameters. (for more info try \'curl --manual\')', required=False)
 parser.add_argument('-p', '--proxy', action='store', metavar='PROXY_SERVER:PORT', help='use a proxy to connect to remote server at [protocol]://[host]:[port] (example: -p http://localhost:8080) **only use HTTP or HTTPS protocols!', required=False)
 parser.add_argument('-i', '--img', help='scrape page for image files and save to \'img\' subdirectory', action='store_true', required=False)
 parser.add_argument('-d', '--debug', help='show detailed stack trace on exceptions', action='store_true', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s v0.74 by vvn <root@nobody.ninja>, released January 21, 2016.')
+parser.add_argument('--version', action='version', version='%(prog)s v0.75 by vvn <root@nobody.ninja>, released July 5, 2016.')
 
 args = parser.parse_args()
 if args.out:
    writeout = 1
+if args.save_path:
+   writeout = 1
+   outpath = args.save_path
 if args.links:
    links = 1
 if args.img:
@@ -235,7 +241,7 @@ def getCF(cfurl, links):
             parent = urlfqdn + path
             childdir = path
    childdir = childdir.strip('/')
-   domaindir = os.path.join('download', p.netloc)
+   domaindir = os.path.join(outpath, p.netloc)
    parentdir = os.path.join(domaindir, childdir)
    
    if firsturl in finished and cfurl in firsturl:
@@ -657,6 +663,7 @@ def getCF(cfurl, links):
          #print("start time: %s \n" % startdate)
          with df as dlfile:
             if filesize is not None and 'text' not in filetype:
+               filesize = int(filesize)
                bytesize = int(filesize)
                kbsize = getkb(filesize)
                mbsize = getmb(filesize)
@@ -676,13 +683,13 @@ def getCF(cfurl, links):
                      done = int((30 * int(dld)) / int(filesize))
                      dldkb = getkb(dld)
                      dldmb = getmb(dld)
-                     unit = 'b      '
+                     unit = 'b     '
                      prog = str(round(dld,2))
                      if dldkb > 1:
-                        unit = 'kb      '
+                        unit = 'kb     '
                         prog = str(round(dldkb,2))
                         if dldmb > 1:
-                           unit = 'mb      '
+                           unit = 'mb     '
                            prog = str(round(dldmb,2))
                      sys.stdout.write("\r\033[33mdownloaded: \033[36m%s %s  \033[0m[%s%s]\033[35m %d kbps     \033[0mtime elapsed: \033[34m%s      \033[0m\r" % (prog, unit, '\033[32m#\033[0m' * done, ' ' * (30 - done), 0.001 * (dld / ((getsecs(datetime.now()) - start) + 0.1)), (getdif(datetime.now(), start))))
                      dlfile.flush()
@@ -698,6 +705,17 @@ def getCF(cfurl, links):
                   if chunk:
                      dld += len(chunk)
                      dlfile.write(chunk)
+                     dldkb = getkb(dld)
+                     dldmb = getmb(dld)
+                     unit = 'b     '
+                     prog = str(round(dld,2))
+                     if dldkb > 1:
+                        unit = 'kb     '
+                        prog = str(round(dldkb,2))
+                        if dldmb > 1:
+                           unit = 'mb     '
+                           prog = str(round(dldmb,2))
+                     sys.stdout.write("\r\033[33mdownloaded: \033[36m%s %s  \033[35m %d kbps     \033[0mtime elapsed: \033[34m%s      \033[0m\r" % (prog, unit, 0.001 * (dld / ((getsecs(datetime.now()) - start) + 0.1)), (getdif(datetime.now(), start))))
                      dlfile.flush()
                      os.fsync(dlfile.fileno())
                   else:
@@ -986,7 +1004,7 @@ def getCF(cfurl, links):
       urlfqdn = p.scheme + '://' + p.netloc
       parent = getparent(bx)
       if debug:
-         print('\nDEBUG LN 990: \nparent: %s \n' % parent)
+         print('\nDEBUG LN 1001: \nparent: %s \n' % parent)
       s = scraper.get(bx, stream=True, verify=False, proxies=proxystring, allow_redirects=True)
       filetype = s.headers.get('Content-Type')
       filetype = str(filetype)
@@ -1073,6 +1091,7 @@ def getCF(cfurl, links):
                            print('delaying request for %d seconds.. \r' % i)
                            sys.stdout.flush()
                         break
+                        
                      else:
                         if not re.search('http', str(sl[:4])):
                            parent = getparent(bx)
@@ -1091,17 +1110,17 @@ def getCF(cfurl, links):
 
                   #if re.search(r'^(.*)(\/)$', str(bx)):
                else:
-                  print('\nno links found at %s \n' % str(slink))
+                  print('\n\033[34;1mNO LINKS FOUND at: \033[32;21m%s \033[0m\n' % str(slink))
                   si += 1
                   continue
 
          for sd in sdirs:
             if '/' in sd[-1:]:
-               print('\nfollowing directory: %s \n' % sd)
+               print('\n\033[33mfollowing directory: \033[35m%s \033[0m\n' % sd)
                followlinks(sd)
                getCF(sd, 1)
             else:
-               print('\nrequesting link: %s \n' % sd)
+               print('\n\033[31mrequesting link: \033[32m%s \033[0m\n' % sd)
                getCF(sd, 0)
 
       else:
@@ -1122,7 +1141,7 @@ def getCF(cfurl, links):
          
       while found > 0 and keep is not 0:
          if 'follow' not in locals():
-            follow = raw_input('fetch all harvested links? enter Y/N --> ')
+            follow = raw_input('fetch harvested links? enter Y/N --> ')
             while not re.search(r'^[yYnN]$', follow):
                follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
          elif follow.lower() == 'n':
@@ -1142,7 +1161,6 @@ def getCF(cfurl, links):
                            dd = parent + dd
                         s.append(str(dd))
                         checkfordirs = 1
-
             if len(s) > 0 and checkfordirs == 1:
                if 'followdirs' not in locals() and 'followdirs' not in globals():
                   followdirs = raw_input('follow directories? enter Y/N --> ')
@@ -1160,7 +1178,6 @@ def getCF(cfurl, links):
             else:
                followdirs = 'n'
                depth = 0
-
             if findlinks:
                total = len(findlinks)
             else:
@@ -1168,11 +1185,11 @@ def getCF(cfurl, links):
             if writeout == 1:
                if not os.path.exists(parentdir):
                   os.makedirs(parentdir)
-            if total > 0:
+            fetched = 0
+            while fetched < total:
                if followdirs.lower() == 'n':
-                  
-                  findlinks = html.findAll('a')
                   for link in findlinks:
+                     fetched += 1
                      b = link.get('href')
                      if b:
                         if not re.search(r'^(.*)(\/)$', str(b)) and '#' not in str(b) and 'javascript' not in str(b):
@@ -1208,9 +1225,18 @@ def getCF(cfurl, links):
                         else:
                            continue
                      else:
+                        keep = 0
                         break
-                     total = total - 1
+                        if debug == 1:
+                           print('\n\033[33;1mDEBUG LN 1228: \n\nFETCHED / TOTAL: \033[36;21m %d \033[0m/\033[35m %s \033[0m \n' % (fetched, total))
+                     if fetched == total:
+                        print('\ncompleted all downloads in this directory! \n')
+                        break
+                  found = found - 1
                   links = 1
+                  if fetched == total:
+                     keep = 0
+                     break
                elif followdirs.lower() == 'y' and depth > 0:
                   choosedir = raw_input("choose subdirectory? Y/N --> ")
                   while not re.match(r'^[YyNn]$', choosedir):
@@ -1219,7 +1245,8 @@ def getCF(cfurl, links):
                      links = 0
                      for link in findlinks:
                         b = link.get('href')
-                        if b:
+                        fetched += 1
+                        if b: 
                            if b not in cfurl and '#' not in b and 'javascript' not in str(b):
                               if 'http' not in b[:4]:
                                  bx = parent + b
@@ -1238,10 +1265,16 @@ def getCF(cfurl, links):
                                        getdirs = followlinks(sd)
                                     getdirs = 0
                                  print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
-                                 try:
+                                 try:    
+                                    found -= 1
                                     getCF(bx, 0)
                                     if debug == 1:
-                                       print("\nDEBUG LN 1245: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                                       print("\nDEBUG LN 1269: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                                       print('\n\033[33;1mFETCHED / TOTAL: \033[36;21m %d \033[0m/\033[35m %s \033[0m \n' % (fetched, total))
+                                    if fetched == total:
+                                       print('\ncompleted all downloads in this directory! \n')
+                                       keep = 0
+                                       break
                                  except KeyboardInterrupt:
                                     try:
                                        print("\r\nskipping %s...\n press CTRL + C again to quit.\n" % bx)
@@ -1265,9 +1298,16 @@ def getCF(cfurl, links):
                                     keep = 0
                                     sys.exit(1)
                         else:
+                           keep = 0
                            break
+                        if debug == 1:
+                           print('\n\033[33;1mDEBUG LN 1301: FETCHED / TOTAL: \033[36;21m %d \033[0m/\033[35m %s \033[0m \n' % (fetched, total))
                      found = found - 1
                      links = 1
+                     if fetched == total:
+                        print('\ncompleted all downloads in this directory! \n')
+                        keep = 0
+                        break
                   else:
                      subcont = 1
                      geturl = cfurl
@@ -1277,7 +1317,7 @@ def getCF(cfurl, links):
                            break
                         geturl, subcont, parent = selectdir(geturl)
                         if debug == 1:
-                           print("\nDEBUG LN 1281: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                           print("\nDEBUG LN 1317: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
                         checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
                         while not re.match(r'^[1-3]$', checksubdir):
                            checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
@@ -1288,16 +1328,23 @@ def getCF(cfurl, links):
                               geturl = getparent(geturl)
                               depth = depth - 1
                            break
-
                      if geturl in finished:
+                        subcont = 0
+                        keep = 0
                         break
+                        
                      try:
                         if debug == 1:
-                           print("\nDEBUG LN 1297: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
-                           print('FOUND: %s \n' % str(found))
+                           print("\nDEBUG LN 1335: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
                         print('\nrequesting harvested URL: %s \r\n(press CTRL + C to skip) \n' % geturl)
                         getCF(geturl, links)
-                        found -= 1
+                        found -= 1 
+                        if debug == 1:
+                           print('\n\033[33;1mFETCHED / TOTAL / FOUND: \033[36;21m %d \033[0m/\033[35m %s \033[0m/\033[32m %s \033[0m \n' % (fetched, total, found))
+                        if fetched == total:
+                           print('\ncompleted all downloads in this directory! \n')
+                           keep = 0
+                           break
                      except KeyboardInterrupt:
                         try:
                            print("\r\nskipping %s... \npress CTRL + C again to quit.\n" % geturl)
@@ -1323,13 +1370,15 @@ def getCF(cfurl, links):
                         links = 1
                         keep = 1
                      if debug == 1:
-                        print("\nDEBUG LN 1327: \nfin depth: %d \n" % depth)
+                        print("\nDEBUG LN 1370: \nfin depth: %d \n" % depth)
                         print("fin found: %d \n" % found)
+                        break
 
                elif followdirs.lower() == 'y' and depth < 1:
                   for link in findlinks:
+                     fetched += 1
                      b = link.get('href')
-                     if not re.match(r'^((\.\.)?\/)$', str(b)):
+                     if not re.match(r'^((\.\.)?\/)$', str(b)) or 'http' not in b[:4]:   
                         bx = parent + b
                         if bx in finished:
                            keep = 0
@@ -1338,6 +1387,13 @@ def getCF(cfurl, links):
                         print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % bx)
                         try:
                            getCF(bx, links)
+                           if debug == 1:
+                              print("\nDEBUG LN 1388: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                              print('\n\033[33;1mFETCHED / TOTAL / FOUND: \033[36;21m %d \033[0m/\033[35m %s \033[0m/\033[32m %s \033[0m \n' % (fetched, total, found))
+                           if fetched == total:
+                              print('\ncompleted all downloads in this directory! \n')
+                              keep = 0
+                              break
                         except KeyboardInterrupt:
                            try:
                               print("\r\nskipping %s... press CTRL + C again to quit.\n" % bx)
@@ -1360,20 +1416,32 @@ def getCF(cfurl, links):
                            raise
                            sys.exit(1)
                         finally:
-                           links = 0
+                           links = 1
+                           if debug == 1:
+                              print('\n\033[33;1mDEBUG LN 1422:\n\nFETCHED / TOTAL / FOUND: \033[36;21m %d \033[0m/\033[35m %s \033[0m/\033[32m %s \033[0m \n' % (fetched, total, found))
+                           if fetched == total:
+                              keep = 0
+                              print('\ncompleted all downloads in this directory! \n')
+                              break
                      else:
                         continue
                      found -= 1
-                     if debug == 1:
-                        print("\nDEBUG LN 1369: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                        
+                  if debug == 1:
+                     print("\nDEBUG LN 1431: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))                   
+                  print('\ncompleted all downloads in this directory! \n')
+                  if fetched == total:
+                     keep = 0
+                     break
 
                else:
                   for link in findlinks:
                      b = link.get('href')
+                     fetched += 1
                      links = 0
                      if debug == 1:
-                        print("\nDEBUG LN 1376: \nfound: %d \n" % found)
-                     while b:
+                        print("\nDEBUG LN 1440: \nfound: %d \n" % found)
+                     if b:
                         if not re.search(r'^(.*)(\/)$', str(b)):
                            if 'http' not in b[:4]:
                               b = parent + b
@@ -1384,6 +1452,11 @@ def getCF(cfurl, links):
                            try:
                               print("\nrequesting harvested URL: %s \r\n(press CTRL + C to skip)\n" % b)
                               getCF(b, links)
+                              if fetched == total:
+                                 print('\ncompleted all downloads in this directory! \n')
+                                 keep = 0
+                                 links = 1
+                                 break
                            except KeyboardInterrupt:
                               print("\r\nskipping %s...\n" % b)
                               try:
@@ -1403,14 +1476,18 @@ def getCF(cfurl, links):
                               raise
                         else:
                            continue
+                     else:
+                        break
+                     
                      found -= 1
                      if debug == 1:
-                        print("\nDEBUG LN 1409: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                        print("\nDEBUG LN 1479: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
+                  
+                  print('\nno more links left to fetch! \n')
                   links = 1
                   keep = 0
             else:
-               print("\ndid not find any links.\n")
-               found = found - 1
+               print("\ndid not find any links at %s.\n" % cfurl)
                keep = 0
                break
 
@@ -1430,7 +1507,7 @@ def getCF(cfurl, links):
 
       else:
          if debug == 1:
-            print("\nDEBUG LN 1434: \nFOUND/KEEP > 0: \nfound: %d \ndepth: %d \nsetting found to 0 \n" % (found, depth))
+            print("\nDEBUG LN 1504: \n\033[33;1mDEBUG LN 1422:\n\nFETCHED / TOTAL / FOUND / KEEP: \033[36;21m %d \033[0m/\033[35m %d \033[0m/\033[32m %d \033[0m/\033[31m %d \033[0m \n\nkeep: %d \ndepth: %d \nsetting found to 0 \n" % (fetched, total, found, keep, depth))
          found = 0
          cpath = p.path.strip('/')
          cpaths = cpath.split('/')
@@ -1441,16 +1518,18 @@ def getCF(cfurl, links):
          urlfqdn = urlfqdn.strip('/')
          print(urlfqdn)
          matchtop = r'^(%s)$' % firsturl
-         if re.match(matchtop, cfurl) and found == 0 and len(finished) > 0:
+         if re.match(matchtop, cfurl) and len(finished) > 0:
             keep = 0
             print("\nfinished following all links.\n")
+            print(quittext)
+            time.sleep(2)
             sys.exit('\nexiting program.. \n')
          else:
             cfurl = cfurl.rstrip(lastpath)
             if debug == 1:
-               print("\nDEBUG LN 1452: \nLINKS: %d \nKEEP: %d \nFOUND: %d \nDEPTH: %d \n" % (links, keep, found, depth))
+               print("\nDEBUG LN 1524: \nLINKS: %d \nKEEP: %d \nFOUND: %d \nDEPTH: %d \n" % (links, keep, found, depth))
             depth = 0
-            keep = 0
+            links = 1
 
 try:
    print('\ntrying %s.. \n' % cfurl)
@@ -1458,6 +1537,8 @@ try:
       print("\nDEBUG LAST TRY 1459: \nLINKS: %d \nKEEP: %d \nFOUND: %d \n" % (links, keep, found))
    if cfurl in finished and cfurl in firsturl: 
       print("\nfinished following all links.\n")
+      print(quittext)
+      time.sleep(2)
       sys.exit('\nexiting program.. \n')
    getCF(cfurl, links)
 
