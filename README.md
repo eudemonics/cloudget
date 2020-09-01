@@ -60,12 +60,12 @@ OPTIONAL - show version information
     cURL option (-c) most likely doesn't work with cloudflare URLs.
     for cloudflare URL support don't use -c.
 
-#### if you want this free script to be updated more than once every 5 years,
-consider sending a donation to motivate me to keep its development active:
+#### if you want this free script to be updated more than once every 5 years, consider sending a donation to motivate me to keep its development active:
 
-**paypal:** [paypal.me/eudemonics](https://paypal.me/eudemonics)
-**cash app:** [$lvvn](https://cash.app/$lvvn)
-**bitcoin address:** 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR
+1. **paypal:** [paypal.me/eudemonics](https://paypal.me/eudemonics)
+2. **cash app:** [$lvvn](https://cash.app/$lvvn)
+3. **bitcoin address:** 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR
 
 #### STAY SAFE. WEAR A MASK, WASH YOUR HANDS, DON'T BE A JERK.
+
 
