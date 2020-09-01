@@ -1,7 +1,12 @@
-# cloudget 0.72
-#### by vvn [ lost @ nobody . ninja ]
+# cloudget REBIRTH! 0.77 (HELLO 2020!)
+#### by vvn [ vvn @ eudemonics . org ]
+#### release date: August 27, 2020! (from southern california on fire with love, socially-distanced, where every day is pandemic day. happy pandemic day, america!)
+#### previous release date (version 0.76): July 17, 2016 (cringe, how much things have changed since then.)
 
- python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module.
+**WHAT IS CLOUDGET?**
+
+cloudget is a python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module. code fixed to run on python 3 in 2020 after originally written in python 2.x
+in 2016 (hence REBIRH!).
 
 **REQUIRES CFSCRAPE AND BEAUTIFULSOUP MODULES TO RUN**
 
@@ -9,7 +14,7 @@ get cfscrape here:
 
     https://github.com/Anorov/cloudflare-scrape
 
-get BeautifulSoup here:
+get BeautifulSoup here (yes, the script uses the outdated version, sorry):
 
     http://www.crummy.com/software/BeautifulSoup/
 
@@ -55,3 +60,14 @@ OPTIONAL - show version information
 
     cURL option (-c) most likely doesn't work with cloudflare URLs.
     for cloudflare URL support don't use -c.
+
+#### if you want this free script to be updated more than once every 5 years,
+consider sending a donation to motivate me to keep its development active:
+
+    paypal: paypal.me/eudemonics
+    cash app: $lvvn
+    venmo app: $eudemonics
+    bitcoin address: 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR
+
+#### STAY SAFE. WEAR A MASK, WASH YOUR HANDS, DON'T BE A JERK.
+
