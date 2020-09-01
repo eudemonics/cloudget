@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# cloudget rebirth! v0.77
-# release date: August 27, 2020
+# cloudget rebirth! v0.78
+# release date: September 1, 2020
 # author: vvn < vvn @ eudemonics . org >
 #####
 ##### USER LICENSE AGREEMENT & DISCLAIMER
@@ -28,7 +28,26 @@ import sys, argparse, subprocess, os, re, random, requests, string, time, traceb
 #from requests.packages.urllib3.exceptions import InsecureRequestWarning
 #requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from datetime import date, datetime
-from urlparse import urlparse
+try:
+   from urlparse import urlparse
+except:
+   pass
+   try:
+      from urllib.parse import urlparse
+   except:
+      pass
+      if sys.version_info.major == 3:
+         try:
+            os.system('pip3 install urllib.parse')
+         except:
+            print('\nUnable to install the urllib.parse module via pip3. This script requires this module to run. Please install the urllib.parse module for Python 3, or urlparse for Python 2, and run again.\n')
+            sys.exit(1)
+      else:
+         try:
+            os.system('pip install urlparse')
+         except:
+            print('\nUnable to install the urlparse module via pip. This script requires this module to run. Please install the urlparse module for Python 2, or urllib.parse for Python 3, and run again.\n')
+            sys.exit(1)
 from subprocess import PIPE, check_output, Popen
 
 try:
@@ -45,7 +64,7 @@ except:
 intro = '''\n
 \033[40m\033[34m=============================================================\033[0m
 \033[40m\033[32m=============================================================\033[0m
-\033[40m\033[37;1m------------------ CLOUDGET REBIRTH! v0.77 ------------------\033[0m
+\033[40m\033[37;1m------------------ CLOUDGET REBIRTH! v0.78 ------------------\033[0m
 \033[40m\033[34;21m=============================================================\033[0m
 \033[40m\033[32m=============================================================\033[0m
 \033[40m\033[35;1m----------------------- author : vvn ------------------------\033[0m
@@ -57,7 +76,7 @@ intro = '''\n
 \033[40m\033[33;1m---------------- via venmo app: $eudemonics -----------------\033[0m
 \033[40m\033[33;1m-------- via BTC: 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR --------\033[0m
 \033[40m\033[34;1m=============================================================\033[0m
-\033[40m\033[32;1m------------------ thanks for the support! ------------------\033[0m
+\033[40m\033[37;1m------------------ thanks for the support! ------------------\033[0m
 \033[40m\033[34;1m=============================================================\033[0m
 \033[21m\n'''
 
@@ -65,7 +84,7 @@ if os.name == 'nt' or sys.platform == 'win32':
    intro = '''\n
    =============================================================
    =============================================================
-   ------------------ CLOUDGET REBIRTH! v0.77 ------------------
+   ------------------ CLOUDGET REBIRTH! v0.78 ------------------
    =============================================================
    =============================================================
    ----------------------- author : vvn ------------------------
@@ -137,7 +156,7 @@ args = parser.parse_args()
 if args.output:
    writeout = 1
    outpath = args.output
-   if args.output is 'output':
+   if args.output == 'output':
       outpath = 'download'
    elif args.output is None:
       writeout = 0
@@ -162,7 +181,7 @@ if args.proxy:
    proxytype = str(x.scheme)
 if args.curl in 'empty':
    usecurl = 0
-elif args.curl is 'curl':
+elif args.curl == 'curl':
    usecurl = 1
 else:
    usecurl = 1
@@ -585,12 +604,12 @@ def getCF(cfurl, links):
             if 'existing' not in globals():
                existing = 0
             if existing == 0:
-               checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
+               checkresume = input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
                while not re.match(r'^[1-3]$', checkresume):
-                  checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
-               checkexist = raw_input('\ndo this for all downloads? Y/N --> ')
+                  checkresume = input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+               checkexist = input('\ndo this for all downloads? Y/N --> ')
                while not re.match(r'^[YyNn]$', checkexist):
-                  checkexist = raw_input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
+                  checkexist = input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
                if checkexist.lower() == 'y':
                   existing = 1
                else:
@@ -649,12 +668,12 @@ def getCF(cfurl, links):
          if 'existing' not in globals():
             existing = 0
          if existing == 0:
-            checkresume = raw_input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
+            checkresume = input('choose an option [1-3]: 1) resume download, 2) start new download, 3) skip. --> ')
             while not re.match(r'^[1-3]$', checkresume):
-               checkresume = raw_input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
-            checkexist = raw_input('\ndo this for all downloads? Y/N --> ')
+               checkresume = input('invalid input. enter 1 to resume, 2 to start new, or 3 to skip --> ')
+            checkexist = input('\ndo this for all downloads? Y/N --> ')
             while not re.match(r'^[YyNn]$', checkexist):
-               checkexist = raw_input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
+               checkexist = input('invalid entry. enter Y to use same action on existing files or N to always ask --> ')
             if checkexist.lower() == 'y':
                existing = 1
             else:
@@ -881,21 +900,21 @@ def getCF(cfurl, links):
                print('\n')
                linksel = '[1-%d]' % lenlinks
                lim = lenlinks + 1
-               selectlink = raw_input('make a selection %s to download the corresponding link. to continue to another directory or download all links, enter 0 --> ' % linksel)
+               selectlink = input('make a selection %s to download the corresponding link. to continue to another directory or download all links, enter 0 --> ' % linksel)
                while not re.match(r'^[0-9]{1,3}$', selectlink):
-                  selectlink = raw_input('invalid input. please enter an integer 0-%d --> ' % lenlinks)
+                  selectlink = input('invalid input. please enter an integer 0-%d --> ' % lenlinks)
                selectlink = int(selectlink)
                while selectlink not in range(0, lim):
-                  selectlink = raw_input('invalid selection. please enter value between 0 and %s --> ' % lenlinks)
+                  selectlink = input('invalid selection. please enter value between 0 and %s --> ' % lenlinks)
                if selectlink == 0:
                   dl = 0
                   foundlinks = len(linkresult)
                   print('\ncontinuing.. \n')
                   break
                elif selectlink in range(1, lim):
-                  followlink = raw_input('harvest links at the selected URL? enter Y/N --> ')
+                  followlink = input('harvest links at the selected URL? enter Y/N --> ')
                   while not re.match(r'^[yYnN]$', followlink):
-                     followlink = raw_input('invalid entry. enter Y or N --> ')
+                     followlink = input('invalid entry. enter Y or N --> ')
                   if followlink.lower() == 'y':
                      following = 1
                   else:
@@ -908,9 +927,9 @@ def getCF(cfurl, links):
                      lnk = lnk.lstrip('/')
                      lnk = par + lnk
                   getCF(lnk, following)
-                  another = raw_input('to choose another link to download, enter 1. to continue, enter 2. to quit, enter 3. --> ')
+                  another = input('to choose another link to download, enter 1. to continue, enter 2. to quit, enter 3. --> ')
                   while not re.match(r'^[1-3]$', another):
-                     another = raw_input('invalid selection. please enter a value 1-3 --> ')
+                     another = input('invalid selection. please enter a value 1-3 --> ')
                   if another == '2':
                      dl = 0
                      break
@@ -1016,12 +1035,12 @@ def getCF(cfurl, links):
             startsel = '0-%d' % dirtotal
          else:
             startsel = '1-%d' % dirtotal
-         selectdir = raw_input('make a selection [%s] --> ' % startsel)
+         selectdir = input('make a selection [%s] --> ' % startsel)
          while not re.match(r'^[0-9]{1,3}$', selectdir):
-            selectdir = raw_input('invalid input. please enter an integer %s --> ' % startsel)
+            selectdir = input('invalid input. please enter an integer %s --> ' % startsel)
          selectdir = int(selectdir)
          if selectdir not in range(0, lim):
-            selectdir = raw_input('invalid entry. please enter a selection %s --> ' % startsel)
+            selectdir = input('invalid entry. please enter a selection %s --> ' % startsel)
          if selectdir == '0':
             geturl = parent
             subcont = 0
@@ -1183,11 +1202,11 @@ def getCF(cfurl, links):
          keep = 1
          depth = 0
 
-      while found > 0 and keep is not 0:
+      while found > 0 and keep != 0:
          if 'follow' not in locals():
-            follow = raw_input('fetch harvested links? enter Y/N --> ')
+            follow = input('fetch harvested links? enter Y/N --> ')
             while not re.search(r'^[yYnN]$', follow):
-               follow = raw_input('invalid entry. enter Y to follow harvested links or N to quit --> ')
+               follow = input('invalid entry. enter Y to follow harvested links or N to quit --> ')
          elif follow.lower() == 'n':
             break
          elif follow.lower() == 'y':
@@ -1207,9 +1226,9 @@ def getCF(cfurl, links):
                         checkfordirs = 1
             if len(s) > 0 and checkfordirs == 1:
                if 'followdirs' not in locals() and 'followdirs' not in globals():
-                  followdirs = raw_input('follow directories? enter Y/N --> ')
+                  followdirs = input('follow directories? enter Y/N --> ')
                   while not re.search(r'^[yYnN]$', followdirs):
-                     followdirs = raw_input('invalid entry. enter Y to follow directories or N to only retrieve files --> ')
+                     followdirs = input('invalid entry. enter Y to follow directories or N to only retrieve files --> ')
                   if followdirs.lower() == 'y':
                      depth = 1
                   else:
@@ -1282,9 +1301,9 @@ def getCF(cfurl, links):
                      keep = 0
                      break
                elif followdirs.lower() == 'y' and depth > 0:
-                  choosedir = raw_input("choose subdirectory? Y/N --> ")
+                  choosedir = input("choose subdirectory? Y/N --> ")
                   while not re.match(r'^[YyNn]$', choosedir):
-                     choosedir = raw_input("invalid entry. enter Y to pick subdirectory or N to download everything --> ")
+                     choosedir = input("invalid entry. enter Y to pick subdirectory or N to download everything --> ")
                   if choosedir.lower() == 'n':
                      links = 0
                      for link in findlinks:
@@ -1355,17 +1374,17 @@ def getCF(cfurl, links):
                   else:
                      subcont = 1
                      geturl = cfurl
-                     while subcont is not 0:
+                     while subcont != 0:
                         depth += 1
                         if subcont < 1:
                            break
                         geturl, subcont, parent = selectdir(geturl)
                         if debug == 1:
                            print("\nDEBUG LN 1352: \nfound: %d \nlinks: %d \nkeep: %d \ndepth: %d \n" % (found, links, keep, depth))
-                        checksubdir = raw_input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
+                        checksubdir = input("enter 1 to select this directory, 2 to choose a subdirectory, or 3 to go back to parent directory --> ")
                         while not re.match(r'^[1-3]$', checksubdir):
-                           checksubdir = raw_input("invalid input. enter a value 1-3 --> ")
-                        if checksubdir is not 2:
+                           checksubdir = input("invalid input. enter a value 1-3 --> ")
+                        if checksubdir != 2:
                            if checksubdir == '3':
                               p = urlparse(geturl)
                               droppath = p.path.split('/')[-1]
@@ -1662,3 +1681,4 @@ print(quittext)
 time.sleep(3)
 print('\nexiting program.. \n')
 sys.exit(0)
+finish
