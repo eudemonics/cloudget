@@ -1,12 +1,11 @@
-# cloudget REBIRTH! 0.77 (HELLO 2020!)
+# cloudget REBIRTH! 0.78 (HELLO 2020!)
 #### by vvn [ vvn @ eudemonics . org ]
-#### release date: August 27, 2020! (from southern california on fire with love, socially-distanced, where every day is pandemic day. happy pandemic day, america!)
-#### previous release date (version 0.76): July 17, 2016 (cringe, how much things have changed since then.)
+#### release date: September 1, 2020 (from southern california on fire with love, socially-distanced, where every day is pandemic day. happy pandemic day, america!)
+#### previous release date (version 0.77): August 27, 2020
 
 **WHAT IS CLOUDGET?**
 
-cloudget is a python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module. code fixed to run on python 3 in 2020 after originally written in python 2.x
-in 2016 (hence REBIRH!).
+cloudget is a python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module. code migrated to run on python 3 in 2020 version 0.78 after originally written in python 2.x in 2016 (hence REBIRH!).
 
 **REQUIRES CFSCRAPE AND BEAUTIFULSOUP MODULES TO RUN**
 
