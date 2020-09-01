@@ -5,7 +5,7 @@
 
 **WHAT IS CLOUDGET?**
 
-cloudget is a python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading. built upon cfscrape module. code migrated to run on python 3 in 2020 version 0.78 after originally written in python 2.x in 2016 (hence REBIRH!).
+cloudget is a python script to bypass cloudflare from command line, with extensive scraping, link harvesting, and recursive directory downloading with resume option. built upon cfscrape module. code migrated to run on python 3 in version 0.78 released in 2020 after originally written in python 2.x in 2016 (hence REBIRH!).
 
 **REQUIRES CFSCRAPE AND BEAUTIFULSOUP MODULES TO RUN**
 
@@ -63,10 +63,9 @@ OPTIONAL - show version information
 #### if you want this free script to be updated more than once every 5 years,
 consider sending a donation to motivate me to keep its development active:
 
-    paypal: paypal.me/eudemonics
-    cash app: $lvvn
-    venmo app: $eudemonics
-    bitcoin address: 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR
+**paypal:** [paypal.me/eudemonics](https://paypal.me/eudemonics)
+**cash app:** [$lvvn](https://cash.app/$lvvn)
+**bitcoin address:** 1KQvnea8VtnXFEwynVQ8kgeqjsS4rQZFUR
 
 #### STAY SAFE. WEAR A MASK, WASH YOUR HANDS, DON'T BE A JERK.
 
