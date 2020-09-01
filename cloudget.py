@@ -150,7 +150,7 @@ parser.add_argument('-c', '--curl', nargs='?', default='empty', const='curl', de
 parser.add_argument('-p', '--proxy', action='store', metavar='PROXY_SERVER:PORT', help='use a proxy to connect to remote server at [protocol]://[host]:[port] (example: -p http://localhost:8080) **only use HTTP or HTTPS protocols!', required=False)
 parser.add_argument('-i', '--img', help='scrape page for image files and save to \'img\' subdirectory', action='store_true', required=False)
 parser.add_argument('-d', '--debug', help='show detailed stack trace on exceptions', action='store_true', required=False)
-parser.add_argument('--version', action='version', version='%(prog)s v0.77 by vvn <vvn@eudemonics.org>, released August 27, 2020.')
+parser.add_argument('--version', action='version', version='%(prog)s v0.78 by vvn <vvn@eudemonics.org>, released September 1, 2020.')
 
 args = parser.parse_args()
 if args.output:
@@ -1681,4 +1681,3 @@ print(quittext)
 time.sleep(3)
 print('\nexiting program.. \n')
 sys.exit(0)
-finish
